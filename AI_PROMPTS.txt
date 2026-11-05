@@ -1,0 +1,47 @@
+AI ASSISTANCE LOG
+
+This log records material assistance from the Codex conversation on 2026-11-05.
+It covers the work described below. Earlier AI assistance, if any, must be
+recorded separately by the contributors who used it.
+
+================================================
+Date: 2026-11-05
+Student: Youssef Ashraf
+Tool: OpenAI Codex
+Related Requirement: Repository structure and workflow (project description,
+Sections 10 and 11)
+Prompt / chronological summary:
+Requested that the existing Travel-Planning-System Git repository be reorganized
+so the project root contains backend/ and an empty frontend/ placeholder,
+preserving backend files, local .env, history, remote, and branch.
+Follow-up prompts requested the essential setup, publishing the reorganization
+to GitHub, and creating develop with a project-structure walkthrough.
+How the output was used:
+Codex moved Git metadata to the parent folder, preserved the existing backend,
+added root setup documentation, secret-ignore rules, a credential-free backend
+.env.example, and frontend/.gitkeep. It verified build, lint, and the existing
+unit tests, committed and pushed the reorganization to main, then created and
+published develop from that commit. The conversation also explained controller,
+service, module, schema, and test responsibilities. This was solution-led setup
+with guided explanations; it is not evidence of independent implementation.
+================================================
+
+================================================
+Date: 2026-11-05
+Student: Youssef Ashraf
+Tool: OpenAI Codex
+Related Requirement: Feature-based backend modules (project description,
+Section 1.1); AI disclosure (Section 11)
+Prompt:
+"ok , organize all folders so eahc feature is a folder containing all related
+files to it, then update that to github"
+How the output was used:
+Codex grouped the existing application module, controller, service, and unit
+test under backend/src/app/, retaining backend/src/users/ as the user feature
+with its own schema and tests. It updated the entry-point, root-module, and
+end-to-end-test imports and documented the folder convention. It created this
+log and prepared the change on a refactor branch for a pull request into
+develop. No new business features were implemented by this reorganization.
+This was solution-led implementation. The student must review and understand
+the changes before integration, as required by the project description.
+================================================

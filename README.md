@@ -12,10 +12,37 @@ Travel-Planning-System/
 │   ├── .env.example  # Safe configuration template
 │   └── .env          # Local configuration; ignored by Git
 ├── frontend/         # Placeholder only
+├── AI_PROMPTS.txt    # Record of material AI assistance
 └── README.md
 ```
 
 Open this repository's top-level folder in VS Code so both folders appear in Explorer. Run Git commands from this folder; run backend npm commands from `backend/`.
+
+## Backend feature folders
+
+```text
+backend/
+├── src/
+│   ├── main.ts                    # Starts the application
+│   ├── app/                       # Root application module and greeting endpoint
+│   │   ├── app.module.ts
+│   │   ├── app.controller.ts
+│   │   ├── app.controller.spec.ts
+│   │   └── app.service.ts
+│   └── users/                     # User feature
+│       ├── users.module.ts
+│       ├── users.controller.ts
+│       ├── users.controller.spec.ts
+│       ├── users.service.ts
+│       ├── users.service.spec.ts
+│       └── schemas/
+│           └── user.schema.ts
+└── test/                          # Application-level end-to-end tests
+```
+
+Keep each feature's module, controllers, services, unit tests, and schemas in that feature's folder. Add `dto/`, guards, or other supporting files inside the feature when needed. Add new feature folders, such as `auth/`, `flights/`, and `hotels/`, when their implementation begins.
+
+`src/main.ts` is the application entry point. The root module in `src/app/app.module.ts` loads environment configuration, connects MongoDB, and imports feature modules. Application-level end-to-end tests stay in `backend/test/` because they exercise the assembled application.
 
 ## Backend setup
 
@@ -60,4 +87,4 @@ npm run test:e2e
 - Travel and booking features remain to be implemented against the assignment requirements.
 - `frontend/` contains only `.gitkeep` so Git preserves the placeholder directory.
 
-Before starting new work, pull the latest changes and create a feature branch. Commit source changes and the relevant lockfile; keep credentials, dependencies, and generated build output out of Git.
+Before starting new work, pull the latest `develop` changes and create a feature, fix, refactor, or documentation branch. Open a pull request into `develop` for team-leader review; merge milestone releases from `develop` into `main`. Commit source changes and the relevant lockfile; keep credentials, dependencies, and generated build output out of Git. Record material AI assistance in `AI_PROMPTS.txt` throughout development.
