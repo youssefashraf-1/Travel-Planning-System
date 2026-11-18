@@ -1,8 +1,7 @@
 AI ASSISTANCE LOG
 
-This log records material assistance from the Codex conversation on 2026-11-05.
-It covers the work described below. Earlier AI assistance, if any, must be
-recorded separately by the contributors who used it.
+This log records material assistance from Codex for the work described below.
+Contributors record their other uses of AI separately.
 
 ================================================
 Date: 2026-11-05
@@ -44,4 +43,18 @@ log and prepared the change on a refactor branch for a pull request into
 develop. No new business features were implemented by this reorganization.
 This was solution-led implementation. The student must review and understand
 the changes before integration, as required by the project description.
+================================================
+
+================================================
+Date: 2026-11-18
+Student: Youssef Ashraf
+Tool: OpenAI Codex
+Related requirements: ACC-01, ACC-04, ACC-05, ACC-06, ACC-07a, ACC-09,
+ACC-12 through ACC-16, ACC-19, GEN-13 and ITN-18
+Prompt summary:
+Continue with Phase 2, Step 2 after reviewing the official workbook.
+How the output was used:
+Codex expanded the Mongoose User schema, added tests for role and provider
+validation and compatibility with existing accounts, and documented moderator
+assignments and the planned session model.
 ================================================
