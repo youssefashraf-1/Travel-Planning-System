@@ -128,3 +128,16 @@ day activities and costs, and blog posts, comments and likes. It registered
 the top-level models with NestJS, documented model relationships and verified
 schema validation.
 ================================================
+
+================================================
+Date: 2026-11-18
+Student: Youssef Ashraf
+Tool: OpenAI Codex
+Related requirements: GEN-01, GEN-07, GEN-09, GEN-10 and ACC-15
+Prompt:
+Finish the supporting schemas for notifications, reports, and audit logs.
+How the output was used:
+Codex designed the three models, registered them with NestJS, and added
+validation tests for notification subjects, report resolution, and audit
+history. The design notes document the indexes and later service rules.
+================================================
