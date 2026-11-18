@@ -111,3 +111,20 @@ Codex implemented the three schemas, connected their NestJS modules,
 added validation tests and documented how the data supports seat holds,
 round-trip pricing, policy acceptance and the booking lifecycle.
 ================================================
+
+================================================
+Date: 2026-11-18
+Student: Youssef Ashraf
+Tool: OpenAI Codex
+Related requirements: HTL-01 through HTL-24, PAY-01 through PAY-04,
+ITN-01 through ITN-26, BLG-01 through BLG-12 and GEN-08 through GEN-12,
+where applicable to the data models.
+Prompt:
+Finish all schemas through Blog Post, Comment and Like.
+How the output was used:
+Codex used the official workbook to model hotel profiles, rooms,
+availability, reservations, reviews, payments, refunds, itineraries,
+day activities and costs, and blog posts, comments and likes. It registered
+the top-level models with NestJS, documented model relationships and verified
+schema validation.
+================================================
