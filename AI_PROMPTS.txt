@@ -83,3 +83,16 @@ Codex checked the official airport reference columns, added the Airport
 schema and NestJS module, tested code and time zone validation, and
 documented the mapping for the later data seed.
 ================================================
+
+================================================
+Date: 2026-11-18
+Student: Youssef Ashraf
+Tool: OpenAI Codex
+Related requirements: FLT-03, FLT-05, FLT-06, FLT-11 and FLT-30
+Prompt summary:
+Merge the Airport schema into develop and start the Flight schema.
+How the output was used:
+Codex added the Flight model and NestJS module, modeled the airline and
+airport references, added validation and the local-date uniqueness index,
+and documented and tested the schedule rules.
+================================================
