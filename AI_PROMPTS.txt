@@ -27,6 +27,18 @@ with guided explanations; it is not evidence of independent implementation.
 ================================================
 
 ================================================
+Date: 2026-11-18
+Student: Youssef Ashraf
+Tool: OpenAI Codex
+Related requirements: FLT-01, FLT-08, FLT-09, ACC-15 and GEN-08
+Prompt summary:
+Continue Phase 2 in checklist order by designing the Airline schema.
+How the output was used:
+Codex added the Airline model and NestJS module, modeled baggage and
+cancellation policies, and added model validation tests and design notes.
+================================================
+
+================================================
 Date: 2026-11-05
 Student: Youssef Ashraf
 Tool: OpenAI Codex
