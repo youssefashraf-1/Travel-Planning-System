@@ -2,22 +2,12 @@ import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Schema as MongooseSchema, Types } from 'mongoose';
 import { Airline } from '../../airlines/schemas/airline.schema';
 import { Airport } from '../../airports/schemas/airport.schema';
+import { isCalendarDate } from '../../common/validation/calendar-date';
 
 export enum FlightStatus {
   SCHEDULED = 'scheduled',
   CANCELLED = 'cancelled',
   DEPARTED = 'departed',
-}
-
-function isCalendarDate(value: string): boolean {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
-    return false;
-  }
-
-  const date = new Date(`${value}T00:00:00.000Z`);
-  return (
-    Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === value
-  );
 }
 
 @Schema({ timestamps: true })

@@ -1,7 +1,7 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 
 @Schema({ _id: false })
-class ExtraBaggagePolicy {
+export class ExtraBaggagePolicy {
   @Prop({
     required: true,
     min: 1,
@@ -14,12 +14,24 @@ class ExtraBaggagePolicy {
 }
 
 @Schema({ _id: false })
-class CancellationTier {
+export class CancellationTier {
   @Prop({ required: true, min: 0, validate: Number.isSafeInteger })
   daysBeforeDeparture: number;
 
   @Prop({ required: true, min: 0, max: 100 })
   refundPercentage: number;
+}
+
+export const ExtraBaggagePolicySchema =
+  SchemaFactory.createForClass(ExtraBaggagePolicy);
+export const CancellationTierSchema =
+  SchemaFactory.createForClass(CancellationTier);
+
+export function hasDistinctCancellationThresholds(
+  tiers: (CancellationTier | null)[],
+): boolean {
+  const thresholds = new Set(tiers.map((tier) => tier?.daysBeforeDeparture));
+  return !thresholds.has(undefined) && thresholds.size === tiers.length;
 }
 
 @Schema({ timestamps: true })
@@ -36,21 +48,16 @@ export class Airline {
   @Prop({ required: true, default: true })
   isActive: boolean;
 
-  @Prop({ type: SchemaFactory.createForClass(ExtraBaggagePolicy) })
+  @Prop({ type: ExtraBaggagePolicySchema })
   extraBaggagePolicy?: ExtraBaggagePolicy;
 
   @Prop({
-    type: [SchemaFactory.createForClass(CancellationTier)],
+    type: [CancellationTierSchema],
     required: true,
     default: [],
     castNonArrays: false,
     validate: {
-      validator: (tiers: (CancellationTier | null)[]) => {
-        const thresholds = new Set(
-          tiers.map((tier) => tier?.daysBeforeDeparture),
-        );
-        return !thresholds.has(undefined) && thresholds.size === tiers.length;
-      },
+      validator: hasDistinctCancellationThresholds,
       message:
         'Cancellation tiers must each have a distinct days-before-departure threshold.',
     },
