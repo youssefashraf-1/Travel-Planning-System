@@ -96,3 +96,18 @@ Codex added the Flight model and NestJS module, modeled the airline and
 airport references, added validation and the local-date uniqueness index,
 and documented and tested the schedule rules.
 ================================================
+
+================================================
+Date: 2026-11-18
+Student: Youssef Ashraf
+Tool: OpenAI Codex
+Related requirements: FLT-04, FLT-05, FLT-12, FLT-19, FLT-21 through FLT-26,
+FLT-29, PAY-02 and GEN-11
+Prompt summary:
+Merge the Flight schema and finish Cabin Inventory, Flight Booking and
+Passenger schemas, with automatic merges into develop after verification.
+How the output was used:
+Codex implemented the three schemas, connected their NestJS modules,
+added validation tests and documented how the data supports seat holds,
+round-trip pricing, policy acceptance and the booking lifecycle.
+================================================
