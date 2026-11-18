@@ -9,6 +9,10 @@ import {
   hasDistinctCancellationThresholds,
 } from '../../airlines/schemas/airline.schema';
 import {
+  BookingStatus as FlightBookingStatus,
+  wasConfirmed,
+} from '../../common/booking-status';
+import {
   CabinClass,
   CabinInventory,
 } from '../../flights/schemas/cabin-inventory.schema';
@@ -16,21 +20,7 @@ import { Flight } from '../../flights/schemas/flight.schema';
 import { User } from '../../users/schemas/user.schema';
 import { Passenger, PassengerSchema, PassengerType } from './passenger.schema';
 
-export enum FlightBookingStatus {
-  PENDING_PAYMENT = 'pending_payment',
-  CONFIRMED = 'confirmed',
-  COMPLETED = 'completed',
-  EXPIRED = 'expired',
-  CANCELLED = 'cancelled',
-}
-
-function wasConfirmed(this: FlightBooking): boolean {
-  return (
-    this.status === FlightBookingStatus.CONFIRMED ||
-    this.status === FlightBookingStatus.COMPLETED ||
-    this.status === FlightBookingStatus.CANCELLED
-  );
-}
+export { FlightBookingStatus };
 
 @Schema({ _id: false })
 class FlightBookingSegment {
