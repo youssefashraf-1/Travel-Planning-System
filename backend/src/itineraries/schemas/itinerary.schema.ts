@@ -1,6 +1,7 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Schema as MongooseSchema, Types } from 'mongoose';
 import { isCalendarDate } from '../../common/validation/calendar-date';
+import { Country } from '../../reference-data/schemas/country.schema';
 import { User } from '../../users/schemas/user.schema';
 import { ItineraryDay, ItineraryDaySchema } from './itinerary-day.schema';
 
@@ -41,6 +42,7 @@ export class Itinerary {
         trim: true,
         uppercase: true,
         match: /^[A-Z]{2}$/,
+        ref: Country.name,
       },
     ],
     required: true,

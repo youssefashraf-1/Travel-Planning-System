@@ -1,0 +1,186 @@
+{
+  "countries": [
+    {
+      "_id": "EG",
+      "name": "Egypt",
+      "currencyCode": "EGP"
+    },
+    {
+      "_id": "AE",
+      "name": "United Arab Emirates",
+      "currencyCode": "AED"
+    },
+    {
+      "_id": "GB",
+      "name": "United Kingdom",
+      "currencyCode": "GBP"
+    },
+    {
+      "_id": "US",
+      "name": "United States",
+      "currencyCode": "USD"
+    },
+    {
+      "_id": "FR",
+      "name": "France",
+      "currencyCode": "EUR"
+    },
+    {
+      "_id": "DE",
+      "name": "Germany",
+      "currencyCode": "EUR"
+    },
+    {
+      "_id": "JP",
+      "name": "Japan",
+      "currencyCode": "JPY"
+    },
+    {
+      "_id": "SA",
+      "name": "Saudi Arabia",
+      "currencyCode": "SAR"
+    }
+  ],
+  "cities": [
+    {
+      "_id": "cairo",
+      "name": "Cairo",
+      "countryCode": "EG"
+    },
+    {
+      "_id": "dubai",
+      "name": "Dubai",
+      "countryCode": "AE"
+    },
+    {
+      "_id": "london",
+      "name": "London",
+      "countryCode": "GB"
+    },
+    {
+      "_id": "new_york",
+      "name": "New York",
+      "countryCode": "US"
+    },
+    {
+      "_id": "paris",
+      "name": "Paris",
+      "countryCode": "FR"
+    },
+    {
+      "_id": "tokyo",
+      "name": "Tokyo",
+      "countryCode": "JP"
+    },
+    {
+      "_id": "riyadh",
+      "name": "Riyadh",
+      "countryCode": "SA"
+    },
+    {
+      "_id": "frankfurt",
+      "name": "Frankfurt",
+      "countryCode": "DE"
+    }
+  ],
+  "airports": [
+    {
+      "iataCode": "CAI",
+      "name": "Cairo International Airport",
+      "cityId": "cairo",
+      "countryCode": "EG",
+      "timeZone": "Africa/Cairo"
+    },
+    {
+      "iataCode": "DXB",
+      "name": "Dubai International Airport",
+      "cityId": "dubai",
+      "countryCode": "AE",
+      "timeZone": "Asia/Dubai"
+    },
+    {
+      "iataCode": "LHR",
+      "name": "Heathrow Airport",
+      "cityId": "london",
+      "countryCode": "GB",
+      "timeZone": "Europe/London"
+    },
+    {
+      "iataCode": "JFK",
+      "name": "John F. Kennedy International Airport",
+      "cityId": "new_york",
+      "countryCode": "US",
+      "timeZone": "America/New_York"
+    },
+    {
+      "iataCode": "CDG",
+      "name": "Charles de Gaulle Airport",
+      "cityId": "paris",
+      "countryCode": "FR",
+      "timeZone": "Europe/Paris"
+    },
+    {
+      "iataCode": "HND",
+      "name": "Haneda Airport",
+      "cityId": "tokyo",
+      "countryCode": "JP",
+      "timeZone": "Asia/Tokyo"
+    },
+    {
+      "iataCode": "RUH",
+      "name": "King Khalid International Airport",
+      "cityId": "riyadh",
+      "countryCode": "SA",
+      "timeZone": "Asia/Riyadh"
+    },
+    {
+      "iataCode": "FRA",
+      "name": "Frankfurt Airport",
+      "cityId": "frankfurt",
+      "countryCode": "DE",
+      "timeZone": "Europe/Berlin"
+    }
+  ],
+  "attractions": [
+    {
+      "_id": "att-1",
+      "name": "Giza Pyramids and Sphinx",
+      "cityId": "cairo"
+    },
+    {
+      "_id": "att-2",
+      "name": "Burj Khalifa Observation Deck",
+      "cityId": "dubai"
+    },
+    {
+      "_id": "att-3",
+      "name": "British Museum",
+      "cityId": "london"
+    },
+    {
+      "_id": "att-4",
+      "name": "Central Park",
+      "cityId": "new_york"
+    },
+    {
+      "_id": "att-5",
+      "name": "Louvre Museum",
+      "cityId": "paris"
+    },
+    {
+      "_id": "att-6",
+      "name": "Senso-ji Temple",
+      "cityId": "tokyo"
+    },
+    {
+      "_id": "att-7",
+      "name": "Kingdom Centre Tower (Sky Bridge)",
+      "cityId": "riyadh"
+    },
+    {
+      "_id": "att-8",
+      "name": "Römerberg",
+      "cityId": "frankfurt"
+    }
+  ]
+}

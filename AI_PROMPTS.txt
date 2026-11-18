@@ -141,3 +141,16 @@ Codex designed the three models, registered them with NestJS, and added
 validation tests for notification subjects, report resolution, and audit
 history. The design notes document the indexes and later service rules.
 ================================================
+
+================================================
+Date: 2026-11-18
+Student: Youssef Ashraf
+Tool: OpenAI Codex
+Related requirements: GEN-12, FLT-02, FLT-11, ACC-13, ACC-14 and ITN-18
+Prompt:
+Finish the rest of Phase 2.
+How the output was used:
+Codex reviewed collection relationships and indexes, linked the official
+reference records, added the repeatable seed and exchange-rate cache model,
+and verified seeding, references and uniqueness in local MongoDB.
+================================================

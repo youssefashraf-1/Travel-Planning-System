@@ -10,6 +10,7 @@ import {
 import { Hotel } from '../../hotels/schemas/hotel.schema';
 import { Room } from '../../hotels/schemas/room.schema';
 import { User } from '../../users/schemas/user.schema';
+import { Currency } from '../../reference-data/schemas/currency.schema';
 
 @Schema({ _id: false })
 class ReservedRoom {
@@ -100,7 +101,13 @@ export class HotelBooking {
   @Prop({ type: Date, required: wasConfirmed })
   policyAcceptedAt?: Date;
 
-  @Prop({ required: true, trim: true, uppercase: true, match: /^[A-Z]{3}$/ })
+  @Prop({
+    required: true,
+    trim: true,
+    uppercase: true,
+    match: /^[A-Z]{3}$/,
+    ref: Currency.name,
+  })
   currency: string;
 
   @Prop({ required: true, min: 1, validate: Number.isSafeInteger })

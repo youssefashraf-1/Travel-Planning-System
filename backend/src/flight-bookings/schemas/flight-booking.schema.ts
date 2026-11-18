@@ -18,6 +18,7 @@ import {
 } from '../../flights/schemas/cabin-inventory.schema';
 import { Flight } from '../../flights/schemas/flight.schema';
 import { User } from '../../users/schemas/user.schema';
+import { Currency } from '../../reference-data/schemas/currency.schema';
 import { Passenger, PassengerSchema, PassengerType } from './passenger.schema';
 
 export { FlightBookingStatus };
@@ -98,7 +99,13 @@ export class FlightBooking {
   @Prop({ type: Date, required: wasConfirmed })
   policyAcceptedAt?: Date;
 
-  @Prop({ required: true, trim: true, uppercase: true, match: /^[A-Z]{3}$/ })
+  @Prop({
+    required: true,
+    trim: true,
+    uppercase: true,
+    match: /^[A-Z]{3}$/,
+    ref: Currency.name,
+  })
   currency: string;
 
   @Prop({ required: true, min: 1, validate: Number.isSafeInteger })

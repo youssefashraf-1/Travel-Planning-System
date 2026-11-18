@@ -55,6 +55,14 @@ npm ci
 
 For a fresh clone, copy `.env.example` to `.env` and set `MONGODB_URI` to your MongoDB connection string. Keep an existing `.env` file unchanged. MongoDB must be reachable from your machine for the application to start.
 
+Seed the course reference data before starting the backend against a fresh database. Run this command from `backend/` after setting `MONGODB_URI`:
+
+```bash
+npm run seed:reference
+```
+
+The command inserts or updates the official countries, cities, airports, attractions, and currencies using stable identifiers. Rerunning it keeps the same reference records and leaves other collections untouched. The [database design notes](docs/requirements/database-design.md) describe relationships, indexes, and seed behavior.
+
 ```bash
 npm run start:dev
 ```
@@ -73,7 +81,7 @@ npm test -- --runInBand
 npm run lint
 ```
 
-The current unit tests cover the generated application, users service, and users controller scaffolding. They do not verify completed travel or authentication features. The existing end-to-end test imports the full application and requires a reachable MongoDB instance and runtime configuration:
+Unit tests cover schema validation, reference data, and the initial controller and service scaffolding. The end-to-end test imports the application and uses the database configured by `MONGODB_URI`:
 
 ```bash
 npm run test:e2e
@@ -82,7 +90,7 @@ npm run test:e2e
 ## Milestone 1 status
 
 - NestJS application, environment loading, and MongoDB connection configuration are present.
-- The users module and user schema are present.
+- Core and supporting schemas are registered with NestJS. Reference data can be loaded with `npm run seed:reference`.
 - The users service and controller are scaffolds; user operations and authentication remain to be implemented.
 - Travel and booking features remain to be implemented against the assignment requirements.
 - `frontend/` contains only `.gitkeep` so Git preserves the placeholder directory.

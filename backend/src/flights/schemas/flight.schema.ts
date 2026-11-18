@@ -69,6 +69,13 @@ FlightSchema.index(
   { airlineId: 1, flightNumber: 1, departureLocalDate: 1 },
   { unique: true },
 );
+FlightSchema.index({
+  departureAirportId: 1,
+  arrivalAirportId: 1,
+  departureLocalDate: 1,
+  status: 1,
+  departureAt: 1,
+});
 
 FlightSchema.pre('validate', function () {
   if (
