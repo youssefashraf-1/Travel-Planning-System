@@ -7,6 +7,7 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AirlinesModule } from '../airlines/airlines.module';
 import { AirportsModule } from '../airports/airports.module';
+import { FlightsModule } from '../flights/flights.module';
 import { UsersModule } from '../users/users.module';
 
 export const { ObserveModule, ObserveInstrument } = createObserveModule();
@@ -37,6 +38,7 @@ export const { ObserveModule, ObserveInstrument } = createObserveModule();
     UsersModule,
     AirlinesModule,
     AirportsModule,
+    FlightsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
