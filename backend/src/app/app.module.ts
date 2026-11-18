@@ -6,13 +6,16 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AirlinesModule } from '../airlines/airlines.module';
 import { AirportsModule } from '../airports/airports.module';
+import { AuditLogsModule } from '../audit-logs/audit-logs.module';
 import { BlogModule } from '../blog/blog.module';
 import { FlightBookingsModule } from '../flight-bookings/flight-bookings.module';
 import { FlightsModule } from '../flights/flights.module';
 import { HotelBookingsModule } from '../hotel-bookings/hotel-bookings.module';
 import { HotelsModule } from '../hotels/hotels.module';
 import { ItinerariesModule } from '../itineraries/itineraries.module';
+import { NotificationsModule } from '../notifications/notifications.module';
 import { PaymentsModule } from '../payments/payments.module';
+import { ReportsModule } from '../reports/reports.module';
 import { ReviewsModule } from '../reviews/reviews.module';
 import { UsersModule } from '../users/users.module';
 
@@ -52,6 +55,9 @@ export const { ObserveModule, ObserveInstrument } = createObserveModule();
     PaymentsModule,
     ItinerariesModule,
     BlogModule,
+    NotificationsModule,
+    ReportsModule,
+    AuditLogsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
