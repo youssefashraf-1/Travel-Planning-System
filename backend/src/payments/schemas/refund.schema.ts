@@ -1,6 +1,7 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Schema as MongooseSchema, Types } from 'mongoose';
 import { Payment } from './payment.schema';
+import { Currency } from '../../reference-data/schemas/currency.schema';
 
 export enum RefundStatus {
   PENDING = 'pending',
@@ -30,7 +31,13 @@ export class Refund {
   @Prop({ required: true, min: 1, validate: Number.isSafeInteger })
   amountMinorUnits: number;
 
-  @Prop({ required: true, trim: true, uppercase: true, match: /^[A-Z]{3}$/ })
+  @Prop({
+    required: true,
+    trim: true,
+    uppercase: true,
+    match: /^[A-Z]{3}$/,
+    ref: Currency.name,
+  })
   currency: string;
 
   @Prop({

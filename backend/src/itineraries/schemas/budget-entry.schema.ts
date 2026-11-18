@@ -1,4 +1,5 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
+import { Currency } from '../../reference-data/schemas/currency.schema';
 
 export enum BudgetCategory {
   FOOD = 'food',
@@ -18,7 +19,13 @@ export class BudgetEntry {
   @Prop({ required: true, min: 0, validate: Number.isSafeInteger })
   amountMinorUnits: number;
 
-  @Prop({ required: true, trim: true, uppercase: true, match: /^[A-Z]{3}$/ })
+  @Prop({
+    required: true,
+    trim: true,
+    uppercase: true,
+    match: /^[A-Z]{3}$/,
+    ref: Currency.name,
+  })
   currency: string;
 }
 

@@ -1,5 +1,8 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument, Schema as MongooseSchema, Types } from 'mongoose';
+import { Airline } from '../../airlines/schemas/airline.schema';
+import { Hotel } from '../../hotels/schemas/hotel.schema';
+import { Currency } from '../../reference-data/schemas/currency.schema';
 
 export type UserDocument = HydratedDocument<User>;
 
@@ -46,10 +49,27 @@ export class User {
   @Prop({ type: String, trim: true })
   phone?: string;
 
-  @Prop({ type: String, trim: true, uppercase: true, match: /^[A-Z]{3}$/ })
+  @Prop({
+    type: String,
+    trim: true,
+    uppercase: true,
+    match: /^[A-Z]{3}$/,
+    ref: Currency.name,
+  })
   preferredCurrency?: string;
 
-  @Prop({ type: MongooseSchema.Types.ObjectId })
+  @Prop({
+    type: MongooseSchema.Types.ObjectId,
+    ref: function (this: User) {
+      if (this.role === UserRole.AIRLINE_MODERATOR) {
+        return Airline.name;
+      }
+      if (this.role === UserRole.HOTEL_MODERATOR) {
+        return Hotel.name;
+      }
+      return undefined;
+    },
+  })
   assignedProviderId?: Types.ObjectId;
 
   @Prop({
@@ -72,6 +92,9 @@ export class User {
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);
+UserSchema.index({ role: 1, status: 1, createdAt: -1 });
+UserSchema.index({ status: 1, createdAt: -1 });
+UserSchema.index({ assignedProviderId: 1, role: 1 });
 
 UserSchema.pre('validate', function () {
   const isModerator =

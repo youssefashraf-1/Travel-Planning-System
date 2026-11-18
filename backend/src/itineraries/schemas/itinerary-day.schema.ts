@@ -1,4 +1,5 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
+import { City } from '../../reference-data/schemas/city.schema';
 import { Activity, ActivitySchema } from './activity.schema';
 import { BudgetEntry, BudgetEntrySchema } from './budget-entry.schema';
 import { TransportCost, TransportCostSchema } from './transport-cost.schema';
@@ -15,7 +16,7 @@ const dayListOptions = {
 
 @Schema()
 export class ItineraryDay {
-  @Prop({ required: true, trim: true })
+  @Prop({ required: true, trim: true, ref: City.name })
   cityId: string;
 
   @Prop({ type: String, trim: true })
