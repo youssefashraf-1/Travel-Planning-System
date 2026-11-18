@@ -154,3 +154,22 @@ Codex reviewed collection relationships and indexes, linked the official
 reference records, added the repeatable seed and exchange-rate cache model,
 and verified seeding, references and uniqueness in local MongoDB.
 ================================================
+
+================================================
+Date: 2026-11-18
+Student: MohamedShabrawy16003169
+Tool: Claude Code (Claude Opus 5.5)
+Related requirements: ACC-01, ACC-04 and GEN-13
+Prompt summary:
+Start Phase 3 by implementing traveler registration at
+POST /api/auth/register with backend validation, salted password hashing,
+server-assigned traveler role, recorded terms/privacy consent, duplicate
+email handling, Swagger documentation and tests.
+How the output was used:
+Claude added the Auth feature (controller, service, register DTO and a
+scrypt password hasher), implemented user creation and lookup in
+UsersService, added the /api prefix, request validation and Swagger at
+/api/docs, and wrote unit and end-to-end tests. End-to-end tests now run
+only against a separate test database set by MONGODB_TEST_URI. The student
+reviewed the changes and verification results before merging.
+================================================

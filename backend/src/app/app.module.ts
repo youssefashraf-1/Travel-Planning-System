@@ -6,6 +6,7 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AirlinesModule } from '../airlines/airlines.module';
 import { AirportsModule } from '../airports/airports.module';
+import { AuthModule } from '../auth/auth.module';
 import { AuditLogsModule } from '../audit-logs/audit-logs.module';
 import { BlogModule } from '../blog/blog.module';
 import { ExchangeRatesModule } from '../exchange-rates/exchange-rates.module';
@@ -47,6 +48,7 @@ export const { ObserveModule, ObserveInstrument } = createObserveModule();
     }),
 
     UsersModule,
+    AuthModule,
     ReferenceDataModule,
     AirlinesModule,
     AirportsModule,

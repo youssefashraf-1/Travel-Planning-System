@@ -67,9 +67,9 @@ The command inserts or updates the official countries, cities, airports, attract
 npm run start:dev
 ```
 
-The default address is `http://localhost:3000`. Set `PORT` in `.env` to change it. The existing root endpoint returns `Hello World!`.
+The default address is `http://localhost:3000`. Set `PORT` in `.env` to change it. The root endpoint `GET /` returns `Hello World!`. Business endpoints live under `/api`, and the Swagger documentation is at `http://localhost:3000/api/docs`.
 
-Never commit `.env` or database credentials. `.env.example` contains only a local database example and blank optional monitoring settings. If enabling NestJS Observe, configure your own `OBSERVE_APP_KEY` and `OBSERVE_APP_SECRET` locally.
+Never commit `.env` or database credentials. `.env.example` contains only local database examples and blank optional monitoring settings. If enabling NestJS Observe, configure your own `OBSERVE_APP_KEY` and `OBSERVE_APP_SECRET` locally.
 
 ## Checks
 
@@ -81,17 +81,25 @@ npm test -- --runInBand
 npm run lint
 ```
 
-Unit tests cover schema validation, reference data, and the initial controller and service scaffolding. The end-to-end test imports the application and uses the database configured by `MONGODB_URI`:
+Unit tests cover schema validation, reference data, registration, and the users service. End-to-end tests create and delete records, so they never use `MONGODB_URI`. Set `MONGODB_TEST_URI` in `.env` to a disposable database whose name contains `test`. With Docker, start one and run the tests:
+
+```bash
+docker run -d --rm --name tps-e2e-mongo -p 127.0.0.1:27018:27017 mongo:8.0
+```
 
 ```bash
 npm run test:e2e
+```
+
+```bash
+docker stop tps-e2e-mongo
 ```
 
 ## Milestone 1 status
 
 - NestJS application, environment loading, and MongoDB connection configuration are present.
 - Core and supporting schemas are registered with NestJS. Reference data can be loaded with `npm run seed:reference`.
-- The users service and controller are scaffolds; user operations and authentication remain to be implemented.
+- Traveler registration (ACC-01) is available at `POST /api/auth/register`. Login, sessions, and the remaining account operations are in progress.
 - Travel and booking features remain to be implemented against the assignment requirements.
 - `frontend/` contains only `.gitkeep` so Git preserves the placeholder directory.
 
