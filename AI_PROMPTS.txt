@@ -242,3 +242,21 @@ read-only paginated airport retrieval. Added DTOs, Swagger documentation,
 service tests and isolated local-database API tests. Existing credentials,
 authentication code and schemas were preserved.
 ================================================
+
+================================================
+Date: 2026-11-19
+Student: Youssef Ashraf
+Tool: Codex
+Related requirements: FLT-03, FLT-04, FLT-30, GEN-06
+Prompt summary:
+Complete the second Phase 5 group from the teammate handoff: creating
+flights and cabins, with correct airport-local times and status rules.
+How the output was used:
+Codex added moderator-only flight/cabin creation, local-to-UTC conversion,
+validation and unique-index conflict handling, departure status updates,
+Swagger DTOs and tests. Verified DST gaps/overlaps, date rollover, competing
+duplicate requests, roles, provider ownership and safe initial inventory.
+A browser Swagger check used an isolated local test database and confirmed
+login, flight/cabin creation and duplicate rejection. Existing account code,
+schemas, credentials and shared Atlas data were preserved.
+================================================
