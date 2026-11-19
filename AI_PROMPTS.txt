@@ -260,3 +260,21 @@ A browser Swagger check used an isolated local test database and confirmed
 login, flight/cabin creation and duplicate rejection. Existing account code,
 schemas, credentials and shared Atlas data were preserved.
 ================================================
+
+================================================
+Date: 2026-11-19
+Student: Youssef Ashraf
+Tool: Codex
+Related requirements: FLT-11, FLT-12 (search), FLT-15, FLT-17, FLT-30, GEN-05, GEN-06
+Prompt summary:
+Continue with the next Phase 5 group: flight searching and details, including
+round trips, passenger types, cabin/price filtering, sorting and pagination.
+How the output was used:
+Codex checked the live workbook and added public search/detail endpoints,
+validated query DTOs and documented responses. Search joins existing airline,
+airport and inventory data, filters active scheduled future flights with
+sufficient seats, and returns matching cabins and independent leg pages.
+Added unit and disposable local MongoDB end-to-end tests; checked public
+search/details and invalid price ranges in browser Swagger. Booking totals,
+passenger birth-date validation and inventory holds remain Phase 6 work.
+================================================

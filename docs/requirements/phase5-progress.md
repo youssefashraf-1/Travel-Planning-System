@@ -72,9 +72,45 @@ A real browser Swagger smoke check on a separate disposable local database
 verified cookie login, flight creation (201), cabin creation (201) and repeat
 cabin rejection (409). No tests or seeding were run against shared Atlas.
 
+## Group 3: public search and details
+
+- `GET /api/flights/search`: required `departureAirportId`, `arrivalAirportId`,
+  and `departureDate` (YYYY-MM-DD at the departure airport). Optional
+  `returnDate` adds reverse-route return options, using that airport's local
+  date. Returns `tripType`, `passengers`, `outbound` and, for round trips,
+  `return`. Each leg has items/page/pageSize/totalItems/totalPages.
+- `adults` defaults to 1, `children` and `infants` to 0. At least one adult,
+  infants <= adults, and sufficient seats in one cabin for adults + children.
+  Infants do not consume a seat. Birth-date/type validation, 10% infant fare
+  calculation and a single two-segment booking/payment/reference are Phase 6
+  work; search does not create a booking or calculate a final party quote.
+- Only scheduled flights with departureAt > now from active airlines appear.
+  Available seats are total - booked - held. Search never reserves seats.
+  Empty searches return 200 with an empty list. Airport ids must exist in
+  the reference collection; unknown/identical airports return 400.
+- Optional `cabinClass`, inclusive `minPriceMinorUnits`/`maxPriceMinorUnits`.
+  Prices are per adult/child cabin fare, not party totals. min > max returns
+  400. Returned cabins satisfy every seat/class/price filter. A flight appears
+  once even if several cabins qualify; price sorting uses the cheapest
+  matching cabin. `sortBy` is price, duration or departureTime; `sortOrder`
+  is asc/desc. Object id breaks ties for stable pagination (10 per leg).
+  The same page, party and filters apply independently to both legs. Booking
+  must check that a selected return departs after the selected outbound lands.
+- `GET /api/flights/:id` is public and returns airline/policies, airports,
+  UTC and local times/zones, duration, every cabin's fare, available seats and
+  free baggage count/weight. Inactive, cancelled and departed flights remain
+  viewable with canBook=false. Missing/malformed ids return 404. Internal
+  held/booked counters are not exposed by the public read responses.
+- Public read routes have their own controller, leaving moderator guards on
+  the existing write routes. No account code, schemas or dependencies changed.
+- Verified build, lint, formatting, 176 unit tests and 100 local MongoDB e2e
+  tests. Coverage includes all sorts, pagination before/after filters,
+  non-UTC local dates, wrong inputs, capacity, public and signed-in access,
+  reverse-route options and Swagger schemas. Browser Swagger confirmed public
+  search/details (200) and an inverted price range (400), without login.
+
 ## Next
 
-Group 3: flight search and details (FLT-11, FLT-12, FLT-15, FLT-17).
-Then editing/cancellation, then moderator booking views. Phase 5 is not yet
-complete. Cabin editing and reservation/hold management are not included in
-these two groups.
+Group 4: flight/cabin editing and cancellation (FLT-05, FLT-06).
+Then moderator booking views (FLT-29). Phase 5 is not yet complete.
+Reservation/hold management is Phase 6 work.
