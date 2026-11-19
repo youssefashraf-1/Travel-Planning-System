@@ -6,14 +6,17 @@ import {
 } from '@nestjs/common';
 import { UserStatus } from '../../users/schemas/user.schema';
 import { UsersService } from '../../users/users.service';
+import { SessionsService } from '../sessions.service';
 import { TokenService } from '../token.service';
 import { JwtAuthGuard } from './jwt-auth.guard';
 
 describe('JwtAuthGuard', () => {
   const tokenService = { verifyAccessToken: jest.fn() };
+  const sessionsService = { touch: jest.fn() };
   const usersService = { findById: jest.fn() };
   const guard = new JwtAuthGuard(
     tokenService as unknown as TokenService,
+    sessionsService as unknown as SessionsService,
     usersService as unknown as UsersService,
   );
 
@@ -25,17 +28,36 @@ describe('JwtAuthGuard', () => {
     return { context, request };
   }
 
-  beforeEach(() => jest.resetAllMocks());
+  beforeEach(() => {
+    jest.resetAllMocks();
+    sessionsService.touch.mockResolvedValue(true);
+  });
 
   it('attaches the active user for a valid token cookie', async () => {
     const user = { _id: 'u1', status: UserStatus.ACTIVE };
-    tokenService.verifyAccessToken.mockResolvedValue({ sub: 'u1' });
+    tokenService.verifyAccessToken.mockResolvedValue({ sub: 'u1', sid: 's1' });
     usersService.findById.mockResolvedValue(user);
     const { context, request } = contextWith({ access_token: 'good' });
 
     await expect(guard.canActivate(context)).resolves.toBe(true);
     expect(tokenService.verifyAccessToken).toHaveBeenCalledWith('good');
+    expect(sessionsService.touch).toHaveBeenCalledWith(
+      's1',
+      'u1',
+      expect.any(Date),
+    );
     expect(request.user).toBe(user);
+    expect(request.sessionId).toBe('s1');
+  });
+
+  it('returns 401 when the session was logged out or idle for 30 minutes', async () => {
+    tokenService.verifyAccessToken.mockResolvedValue({ sub: 'u1', sid: 's1' });
+    sessionsService.touch.mockResolvedValue(false);
+
+    await expect(
+      guard.canActivate(contextWith({ access_token: 'x' }).context),
+    ).rejects.toThrow(UnauthorizedException);
+    expect(usersService.findById).not.toHaveBeenCalled();
   });
 
   it('returns 401 without a cookie', async () => {

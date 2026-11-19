@@ -191,3 +191,21 @@ cookie and adds a reusable JwtAuthGuard and @CurrentUser() decorator.
 Unit and end-to-end tests cover these rules. The student reviewed the
 changes and verification results before merging.
 ================================================
+
+================================================
+Date: 2026-11-19
+Student: MohamedShabrawy16003169
+Tool: Claude Code (Claude Opus 5.5)
+Related requirements: ACC-06, ACC-19
+Prompt summary:
+Finish Phase 3 checklist items 7, 8 and 9: secure HttpOnly cookies,
+logout and session expiry.
+How the output was used:
+Claude added a server-side Session model following the team's account
+design notes, a refresh-token cookie with one-time rotation at
+POST /api/auth/refresh, logout at POST /api/auth/logout that revokes the
+session before clearing both cookies, and a 30-minute inactivity window
+that every protected request renews. Unit and end-to-end tests cover
+expiry, rotation, logout and multiple browsers. The student reviewed the
+changes and verification results before merging.
+================================================

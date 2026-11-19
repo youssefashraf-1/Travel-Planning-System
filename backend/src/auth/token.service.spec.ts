@@ -17,20 +17,25 @@ function serviceWithSecret(secret: string | undefined) {
 
 describe('TokenService', () => {
   const user = { _id: new Types.ObjectId(), role: UserRole.TRAVELER };
+  const sessionId = new Types.ObjectId();
 
   it('signs a token that verifies back to the user id and role', async () => {
     const service = serviceWithSecret(SECRET);
 
-    const token = await service.signAccessToken(user);
+    const token = await service.signAccessToken(user, sessionId);
     const payload = await service.verifyAccessToken(token);
 
     expect(payload.sub).toBe(user._id.toString());
     expect(payload.role).toBe(UserRole.TRAVELER);
+    expect(payload.sid).toBe(sessionId.toString());
     expect(payload.exp! - payload.iat!).toBe(15 * 60);
   });
 
   it('rejects a token signed with another secret', async () => {
-    const token = await serviceWithSecret('b'.repeat(48)).signAccessToken(user);
+    const token = await serviceWithSecret('b'.repeat(48)).signAccessToken(
+      user,
+      sessionId,
+    );
 
     await expect(
       serviceWithSecret(SECRET).verifyAccessToken(token),
@@ -39,9 +44,9 @@ describe('TokenService', () => {
 
   it('rejects a tampered token', async () => {
     const service = serviceWithSecret(SECRET);
-    const [header, , signature] = (await service.signAccessToken(user)).split(
-      '.',
-    );
+    const [header, , signature] = (
+      await service.signAccessToken(user, sessionId)
+    ).split('.');
     const forgedBody = Buffer.from(
       JSON.stringify({ sub: user._id.toString(), role: UserRole.ADMIN }),
     ).toString('base64url');
@@ -58,7 +63,7 @@ describe('TokenService', () => {
       const service = serviceWithSecret(secret);
       (service as any).logger.error = jest.fn();
 
-      expect(() => service.signAccessToken(user)).toThrow(
+      expect(() => service.signAccessToken(user, sessionId)).toThrow(
         InternalServerErrorException,
       );
     },

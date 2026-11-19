@@ -4,7 +4,12 @@ import { AuthService } from './auth.service';
 
 describe('AuthController', () => {
   let controller: AuthController;
-  const authService = { register: jest.fn(), login: jest.fn() };
+  const authService = {
+    register: jest.fn(),
+    login: jest.fn(),
+    refresh: jest.fn(),
+    logout: jest.fn(),
+  };
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -36,6 +41,7 @@ describe('AuthController', () => {
     authService.login.mockResolvedValue({
       user: { id: '1' },
       accessToken: 'signed.jwt',
+      refreshToken: 'refresh-1',
     });
     const response = { cookie: jest.fn() };
 
@@ -52,6 +58,67 @@ describe('AuthController', () => {
         path: '/api',
         maxAge: 15 * 60 * 1000,
       }),
+    );
+  });
+
+  it('also sets the refresh token cookie, limited to /api/auth', async () => {
+    authService.login.mockResolvedValue({
+      user: { id: '1' },
+      accessToken: 'signed.jwt',
+      refreshToken: 'refresh-1',
+    });
+    const response = { cookie: jest.fn() };
+
+    await controller.login(
+      { email: 'a@example.com', password: 'travel2026' },
+      response as any,
+    );
+
+    expect(response.cookie).toHaveBeenCalledWith(
+      'refresh_token',
+      'refresh-1',
+      expect.objectContaining({
+        httpOnly: true,
+        secure: true,
+        sameSite: 'strict',
+        path: '/api/auth',
+      }),
+    );
+  });
+
+  it('refuses to refresh without a refresh cookie', async () => {
+    await expect(
+      controller.refresh({ cookies: {} } as any, { cookie: jest.fn() } as any),
+    ).rejects.toThrow('Your session has expired. Please log in again.');
+    expect(authService.refresh).not.toHaveBeenCalled();
+  });
+
+  it('revokes the session before clearing both cookies at logout', async () => {
+    const calls: string[] = [];
+    authService.logout.mockImplementation(async () => {
+      calls.push('revoke');
+    });
+    const response = {
+      clearCookie: jest.fn((name: string) => calls.push(`clear ${name}`)),
+    };
+
+    await controller.logout(
+      { cookies: { access_token: 'a', refresh_token: 'r' } } as any,
+      response as any,
+    );
+
+    expect(authService.logout).toHaveBeenCalledWith({
+      accessToken: 'a',
+      refreshToken: 'r',
+    });
+    expect(calls).toEqual([
+      'revoke',
+      'clear access_token',
+      'clear refresh_token',
+    ]);
+    expect(response.clearCookie).toHaveBeenCalledWith(
+      'refresh_token',
+      expect.objectContaining({ path: '/api/auth', httpOnly: true }),
     );
   });
 });

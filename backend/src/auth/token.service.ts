@@ -13,6 +13,8 @@ export interface AccessTokenPayload {
   /** The user's id. */
   sub: string;
   role: UserRole;
+  /** The server-side session this token belongs to. */
+  sid: string;
 }
 
 const MIN_SECRET_LENGTH = 32;
@@ -31,13 +33,14 @@ export class TokenService {
     private readonly configService: ConfigService,
   ) {}
 
-  signAccessToken(user: {
-    _id: { toString(): string };
-    role: UserRole;
-  }): Promise<string> {
+  signAccessToken(
+    user: { _id: { toString(): string }; role: UserRole },
+    sessionId: { toString(): string },
+  ): Promise<string> {
     const payload: AccessTokenPayload = {
       sub: user._id.toString(),
       role: user.role,
+      sid: sessionId.toString(),
     };
     return this.jwtService.signAsync(payload, {
       secret: this.secret(),
