@@ -4,6 +4,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { Connection, Model, Types } from 'mongoose';
 import request from 'supertest';
 import { App } from 'supertest/types';
+import { Airline } from '../src/airlines/schemas/airline.schema';
 import { AppModule } from '../src/app/app.module';
 import { configureApp } from '../src/app/configure-app';
 import {
@@ -31,6 +32,7 @@ describe('Account security (ACC-07a, ACC-08, ACC-12, ACC-15, ACC-16, ACC-18, e2e
   let auditLogModel: Model<AuditLog>;
   let notificationModel: Model<Notification>;
   let hotelBookingModel: Model<HotelBooking>;
+  let airlineModel: Model<Airline>;
 
   const server = () => app.getHttpServer();
   const cookiesOf = (response: request.Response) =>
@@ -56,6 +58,7 @@ describe('Account security (ACC-07a, ACC-08, ACC-12, ACC-15, ACC-16, ACC-18, e2e
     await notificationModel.deleteMany({ recipientId: { $in: ids } });
     await hotelBookingModel.collection.deleteMany({ userId: { $in: ids } });
     await userModel.deleteMany({ _id: { $in: ids } });
+    await airlineModel.collection.deleteMany({ code: 'ZZ' });
   };
 
   beforeAll(async () => {
@@ -73,6 +76,7 @@ describe('Account security (ACC-07a, ACC-08, ACC-12, ACC-15, ACC-16, ACC-18, e2e
     auditLogModel = app.get(getModelToken(AuditLog.name));
     notificationModel = app.get(getModelToken(Notification.name));
     hotelBookingModel = app.get(getModelToken(HotelBooking.name));
+    airlineModel = app.get(getModelToken(Airline.name));
     await userModel.init();
     await notificationModel.init();
   });
@@ -382,5 +386,148 @@ describe('Account security (ACC-07a, ACC-08, ACC-12, ACC-15, ACC-16, ACC-18, e2e
         .expect(400);
       await login(TRAVELER, PASSWORD).expect(200);
     });
+  });
+
+  describe('moderators and the account list (ACC-13, ACC-14)', () => {
+    let admin: string[];
+    let airlineId: string;
+    const MODERATOR = `omar@${TEST_DOMAIN}`;
+
+    beforeEach(async () => {
+      await seedAdmin(connection, {
+        name: 'Admin',
+        email: ADMIN,
+        password: ADMIN_PASSWORD,
+      });
+      admin = await loginCookies(ADMIN, ADMIN_PASSWORD);
+      const inserted = await airlineModel.collection.insertOne({
+        name: 'Test Air',
+        code: 'ZZ',
+        isActive: true,
+        cancellationTiers: [],
+      });
+      airlineId = inserted.insertedId.toString();
+    });
+
+    const createModerator = (body: object, as = admin) =>
+      request(server())
+        .post('/api/admin/moderators')
+        .set('Cookie', as)
+        .send(body);
+    const moderatorBody = () => ({
+      name: 'Omar Fathy',
+      email: MODERATOR,
+      role: 'airline_moderator',
+      providerId: airlineId,
+      temporaryPassword: 'Temp2026pass',
+    });
+
+    it('creates a moderator who must change the password on first login', async () => {
+      const created = await createModerator(moderatorBody()).expect(201);
+      expect(created.body).toMatchObject({
+        email: MODERATOR,
+        role: 'airline_moderator',
+        status: 'active',
+        mustChangePassword: true,
+        assignedProviderId: airlineId,
+      });
+      expect(created.body).not.toHaveProperty('passwordHash');
+
+      const moderator = cookiesOf(
+        await login(MODERATOR, 'Temp2026pass').expect(200),
+      );
+      await request(server())
+        .get('/api/users/me')
+        .set('Cookie', moderator)
+        .expect(403);
+      await request(server())
+        .patch('/api/auth/change-password')
+        .set('Cookie', moderator)
+        .send({ currentPassword: 'Temp2026pass', newPassword: 'mine2027pass' })
+        .expect(204);
+      await request(server())
+        .get('/api/users/me')
+        .set('Cookie', moderator)
+        .expect(200);
+    });
+
+    it('rejects a duplicate email, a missing provider and a non-moderator role', async () => {
+      await createModerator(moderatorBody()).expect(201);
+      await createModerator(moderatorBody()).expect(409);
+      await createModerator({
+        ...moderatorBody(),
+        email: `other@${TEST_DOMAIN}`,
+        providerId: new Types.ObjectId().toString(),
+      }).expect(404);
+      // An airline id is not a hotel id.
+      await createModerator({
+        ...moderatorBody(),
+        email: `other@${TEST_DOMAIN}`,
+        role: 'hotel_moderator',
+      }).expect(404);
+      await createModerator({
+        ...moderatorBody(),
+        email: `other@${TEST_DOMAIN}`,
+        role: 'admin',
+      }).expect(400);
+    });
+
+    it('only lets administrators create moderators or list accounts', async () => {
+      const traveler = await loginCookies(TRAVELER, PASSWORD);
+
+      await createModerator(moderatorBody(), traveler).expect(403);
+      await request(server())
+        .get('/api/admin/accounts')
+        .set('Cookie', traveler)
+        .expect(403);
+    });
+
+    it('lists accounts with search, role and status filters (ACC-14)', async () => {
+      await createModerator(moderatorBody()).expect(201);
+      const list = (query: string) =>
+        request(server())
+          .get(`/api/admin/accounts?${query}`)
+          .set('Cookie', admin)
+          .expect(200);
+
+      const all = await list(`search=${TEST_DOMAIN}`);
+      expect(all.body).toMatchObject({ page: 1, pageSize: 10, totalItems: 3 });
+      expect(
+        all.body.items.map((item: { email: string }) => item.email),
+      ).toEqual([MODERATOR, ADMIN, TRAVELER]);
+      expect(all.body.items[0]).toHaveProperty('createdAt');
+
+      const moderators = await list(
+        `search=${TEST_DOMAIN}&role=airline_moderator`,
+      );
+      expect(moderators.body.totalItems).toBe(1);
+
+      const byName = await list('search=MONA%20HASSAN');
+      expect(
+        byName.body.items.some(
+          (item: { email: string }) => item.email === TRAVELER,
+        ),
+      ).toBe(true);
+
+      await adminSuspend(admin, await travelerId());
+      const suspended = await list(`search=${TEST_DOMAIN}&status=suspended`);
+      expect(suspended.body.items).toHaveLength(1);
+      expect(suspended.body.items[0].email).toBe(TRAVELER);
+    });
+
+    it('rejects an invalid page or filter', async () => {
+      for (const query of ['page=0', 'page=abc', 'role=pilot', 'status=gone']) {
+        await request(server())
+          .get(`/api/admin/accounts?${query}`)
+          .set('Cookie', admin)
+          .expect(400);
+      }
+    });
+
+    const adminSuspend = (cookies: string[], id: string) =>
+      request(server())
+        .patch(`/api/admin/accounts/${id}/suspend`)
+        .set('Cookie', cookies)
+        .expect(200);
   });
 });

@@ -1,16 +1,19 @@
 import {
   Body,
   Controller,
+  Get,
   HttpCode,
   HttpStatus,
   Param,
   Patch,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import {
   ApiBadRequestResponse,
   ApiConflictResponse,
+  ApiCreatedResponse,
   ApiCookieAuth,
   ApiForbiddenResponse,
   ApiNotFoundResponse,
@@ -27,6 +30,11 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import { UserResponseDto } from '../users/dto/user-response.dto';
 import { UserRole, type UserDocument } from '../users/schemas/user.schema';
 import { AdminAccountsService } from './admin-accounts.service';
+import { CreateModeratorDto } from './dto/create-moderator.dto';
+import {
+  AccountListResponseDto,
+  ListAccountsQueryDto,
+} from './dto/list-accounts.dto';
 import { AdminResetPasswordDto } from './dto/reset-password.dto';
 
 @ApiTags('Admin')
@@ -35,15 +43,57 @@ import { AdminResetPasswordDto } from './dto/reset-password.dto';
 @ApiForbiddenResponse({
   description: 'Not an administrator, or the target is an administrator.',
 })
-@ApiNotFoundResponse({ description: 'Account not found.' })
-@ApiParam({ name: 'id', description: 'The account id.' })
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(UserRole.ADMIN)
 @Controller('admin')
 export class AdminAccountsController {
   constructor(private readonly adminAccounts: AdminAccountsService) {}
 
+  @Post('moderators')
+  @ApiOperation({
+    summary: 'Create an airline or hotel moderator (ACC-13)',
+    description:
+      'Links the new account to exactly one existing airline or hotel. ' +
+      'The admin sets a temporary password; the moderator must change it ' +
+      'on first login before using anything else.',
+  })
+  @ApiCreatedResponse({
+    type: UserResponseDto,
+    description: 'Moderator created; mustChangePassword is true.',
+  })
+  @ApiBadRequestResponse({
+    description:
+      'A field is missing or invalid, or the role is not a moderator role.',
+  })
+  @ApiNotFoundResponse({ description: 'The airline or hotel does not exist.' })
+  @ApiConflictResponse({ description: 'The email is already registered.' })
+  async createModerator(
+    @Body() dto: CreateModeratorDto,
+  ): Promise<UserResponseDto> {
+    return UserResponseDto.fromUser(
+      await this.adminAccounts.createModerator(dto),
+    );
+  }
+
+  @Get('accounts')
+  @ApiOperation({
+    summary: 'List all accounts (ACC-14)',
+    description:
+      'Name, email, role, status and registration date, newest first, ' +
+      '10 per page. Search by part of the name or email and filter by ' +
+      'role and status.',
+  })
+  @ApiOkResponse({ type: AccountListResponseDto })
+  @ApiBadRequestResponse({ description: 'An invalid page, role or status.' })
+  listAccounts(
+    @Query() query: ListAccountsQueryDto,
+  ): Promise<AccountListResponseDto> {
+    return this.adminAccounts.listAccounts(query);
+  }
+
   @Patch('accounts/:id/suspend')
+  @ApiParam({ name: 'id', description: 'The account id.' })
+  @ApiNotFoundResponse({ description: 'Account not found.' })
   @ApiOperation({
     summary: 'Suspend a user or moderator (ACC-15, ACC-16)',
     description:
@@ -63,6 +113,8 @@ export class AdminAccountsController {
   }
 
   @Patch('accounts/:id/reactivate')
+  @ApiParam({ name: 'id', description: 'The account id.' })
+  @ApiNotFoundResponse({ description: 'Account not found.' })
   @ApiOperation({
     summary: 'Reactivate a suspended user or moderator (ACC-15, ACC-16)',
     description:
@@ -81,6 +133,8 @@ export class AdminAccountsController {
   }
 
   @Post('users/:id/reset-password')
+  @ApiParam({ name: 'id', description: 'The account id.' })
+  @ApiNotFoundResponse({ description: 'Account not found.' })
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Reset a password to a temporary one (ACC-07a)',

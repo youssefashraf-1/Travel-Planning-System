@@ -5,9 +5,12 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model, Types } from 'mongoose';
+import { Model, QueryFilter, Types } from 'mongoose';
+import { Airline } from '../airlines/schemas/airline.schema';
 import { AuditAction, AuditLog } from '../audit-logs/schemas/audit-log.schema';
 import { PasswordHasherService } from '../auth/password-hasher.service';
+import { escapeRegExp, PAGE_SIZE, pageInfo } from '../common/pagination';
+import { Hotel } from '../hotels/schemas/hotel.schema';
 import { SessionsService } from '../auth/sessions.service';
 import {
   Notification,
@@ -19,7 +22,13 @@ import {
   UserRole,
   UserStatus,
 } from '../users/schemas/user.schema';
+import { UserResponseDto } from '../users/dto/user-response.dto';
 import { UsersService } from '../users/users.service';
+import { CreateModeratorDto } from './dto/create-moderator.dto';
+import {
+  AccountListResponseDto,
+  ListAccountsQueryDto,
+} from './dto/list-accounts.dto';
 
 /**
  * Admin account actions: suspend and reactivate (ACC-15, ACC-16) and
@@ -38,7 +47,77 @@ export class AdminAccountsService {
     private readonly usersService: UsersService,
     private readonly sessionsService: SessionsService,
     private readonly passwordHasher: PasswordHasherService,
+    @InjectModel(Airline.name) private readonly airlineModel: Model<Airline>,
+    @InjectModel(Hotel.name) private readonly hotelModel: Model<Hotel>,
   ) {}
+
+  /**
+   * ACC-13: creates an airline or hotel moderator linked to one existing
+   * provider. The moderator must change the temporary password on first
+   * login.
+   */
+  async createModerator(dto: CreateModeratorDto): Promise<UserDocument> {
+    const providerId = new Types.ObjectId(dto.providerId);
+    const provider =
+      dto.role === UserRole.AIRLINE_MODERATOR
+        ? await this.airlineModel.exists({ _id: providerId })
+        : await this.hotelModel.exists({ _id: providerId });
+    if (!provider) {
+      throw new NotFoundException(
+        dto.role === UserRole.AIRLINE_MODERATOR
+          ? 'Airline not found.'
+          : 'Hotel not found.',
+      );
+    }
+
+    return this.usersService.createModerator({
+      name: dto.name,
+      email: dto.email,
+      passwordHash: await this.passwordHasher.hash(dto.temporaryPassword),
+      role: dto.role,
+      assignedProviderId: provider._id,
+    });
+  }
+
+  /**
+   * ACC-14: all accounts, newest first, 10 per page. Search matches part
+   * of the name or email; role and status narrow the list.
+   */
+  async listAccounts(
+    query: ListAccountsQueryDto,
+  ): Promise<AccountListResponseDto> {
+    const filter: QueryFilter<User> = {};
+    if (query.role) {
+      filter.role = query.role;
+    }
+    if (query.status) {
+      filter.status = query.status;
+    }
+    if (query.search) {
+      const pattern = new RegExp(escapeRegExp(query.search), 'i');
+      filter.$or = [{ name: pattern }, { email: pattern }];
+    }
+
+    const page = query.page ?? 1;
+    const [accounts, totalItems] = await Promise.all([
+      this.userModel
+        .find(filter)
+        .sort({ createdAt: -1, _id: -1 })
+        .skip((page - 1) * PAGE_SIZE)
+        .limit(PAGE_SIZE)
+        .lean()
+        .exec(),
+      this.userModel.countDocuments(filter).exec(),
+    ]);
+
+    return Object.assign(
+      new AccountListResponseDto(),
+      pageInfo(page, totalItems),
+      {
+        items: accounts.map((account) => UserResponseDto.fromUser(account)),
+      },
+    );
+  }
 
   /** A suspended account cannot log in and loses its open sessions. */
   async suspend(

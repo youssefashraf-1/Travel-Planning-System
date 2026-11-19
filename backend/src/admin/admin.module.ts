@@ -4,7 +4,9 @@ import {
   AuditLog,
   AuditLogSchema,
 } from '../audit-logs/schemas/audit-log.schema';
+import { Airline, AirlineSchema } from '../airlines/schemas/airline.schema';
 import { AuthModule } from '../auth/auth.module';
+import { Hotel, HotelSchema } from '../hotels/schemas/hotel.schema';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import {
   Notification,
@@ -22,6 +24,8 @@ import { AdminAccountsService } from './admin-accounts.service';
       { name: User.name, schema: UserSchema },
       { name: AuditLog.name, schema: AuditLogSchema },
       { name: Notification.name, schema: NotificationSchema },
+      { name: Airline.name, schema: AirlineSchema },
+      { name: Hotel.name, schema: HotelSchema },
     ]),
   ],
   controllers: [AdminAccountsController],
