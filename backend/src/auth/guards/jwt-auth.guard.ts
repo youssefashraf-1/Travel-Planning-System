@@ -9,22 +9,30 @@ import {
 import type { Request } from 'express';
 import { UserDocument, UserStatus } from '../../users/schemas/user.schema';
 import { UsersService } from '../../users/users.service';
-import { ACCESS_TOKEN_COOKIE } from '../auth.constants';
+import {
+  ACCESS_TOKEN_COOKIE,
+  SESSION_EXPIRED_MESSAGE,
+} from '../auth.constants';
+import { SessionsService } from '../sessions.service';
 import { AccessTokenPayload, TokenService } from '../token.service';
 
 export interface AuthenticatedRequest extends Request {
   user: UserDocument;
+  sessionId: string;
 }
 
 /**
- * Protects a route: the request must carry a valid access-token cookie for an
- * existing, active account. The signed-in user is attached as request.user
- * (read it with @CurrentUser()). Use with @UseGuards(JwtAuthGuard).
+ * Protects a route. The request must carry a valid access-token cookie whose
+ * session is still open, for an existing active account. Each accepted
+ * request restarts the session's 30-minute inactivity window (ACC-19).
+ * The signed-in user is attached as request.user (read it with
+ * @CurrentUser()). Use with @UseGuards(JwtAuthGuard).
  */
 @Injectable()
 export class JwtAuthGuard implements CanActivate {
   constructor(
     private readonly tokenService: TokenService,
+    private readonly sessionsService: SessionsService,
     private readonly usersService: UsersService,
   ) {}
 
@@ -44,9 +52,18 @@ export class JwtAuthGuard implements CanActivate {
       if (error instanceof InternalServerErrorException) {
         throw error;
       }
-      throw new UnauthorizedException(
-        'Your session is invalid or has expired. Please log in again.',
-      );
+      throw new UnauthorizedException(SESSION_EXPIRED_MESSAGE);
+    }
+
+    // Rejects sessions that were logged out or idle for 30 minutes, and
+    // otherwise extends them.
+    const sessionIsOpen = await this.sessionsService.touch(
+      payload.sid,
+      payload.sub,
+      new Date(),
+    );
+    if (!sessionIsOpen) {
+      throw new UnauthorizedException(SESSION_EXPIRED_MESSAGE);
     }
 
     const user = await this.usersService.findById(payload.sub);
@@ -59,6 +76,7 @@ export class JwtAuthGuard implements CanActivate {
     }
 
     request.user = user;
+    request.sessionId = payload.sid;
     return true;
   }
 }

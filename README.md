@@ -100,8 +100,9 @@ docker stop tps-e2e-mongo
 - NestJS application, environment loading, and MongoDB connection configuration are present.
 - Core and supporting schemas are registered with NestJS. Reference data can be loaded with `npm run seed:reference`.
 - Traveler registration (ACC-01) is available at `POST /api/auth/register`.
-- Login (ACC-04, ACC-05) is available at `POST /api/auth/login`. It sets a signed JWT in an HttpOnly cookie and locks an account for 15 minutes after five consecutive wrong passwords. Feature modules protect routes with `@UseGuards(JwtAuthGuard)` and read the signed-in user with `@CurrentUser()`.
-- Logout, the 30-minute session, `/api/auth/me`, and the remaining account operations are in progress.
+- Login (ACC-04, ACC-05) is available at `POST /api/auth/login`. It sets a signed 15-minute JWT in an HttpOnly cookie and locks an account for 15 minutes after five consecutive wrong passwords. Feature modules protect routes with `@UseGuards(JwtAuthGuard)` and read the signed-in user with `@CurrentUser()`.
+- Sessions (ACC-06, ACC-19): login also sets an HttpOnly `refresh_token` cookie and opens a server-side session that ends after 30 minutes without an authenticated request. `POST /api/auth/refresh` renews both cookies while the session is open, and `POST /api/auth/logout` revokes the session and clears both cookies.
+- `/api/auth/me` and the remaining account operations are in progress.
 - Travel and booking features remain to be implemented against the assignment requirements.
 - `frontend/` contains only `.gitkeep` so Git preserves the placeholder directory.
 

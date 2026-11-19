@@ -20,4 +20,6 @@ The registration service will validate the email, password and consent, set the 
 
 For ACC-06 and ACC-19, store each session separately under the auth feature. It should include a user ID, a refresh token digest, the last authenticated activity timestamp, an inactivity expiry timestamp and a revocation timestamp.
 
-Set inactivity expiry to 30 minutes after the latest authenticated request. Check expiry and revocation before accepting or extending a session. Renew it only while it is still valid, and revoke it on logout before clearing its cookies. Use HTTP-only, Secure, SameSite cookies for both tokens. The session model and this behavior belong to Phase 3.
+Set inactivity expiry to 30 minutes after the latest authenticated request. Check expiry and revocation before accepting or extending a session. Renew it only while it is still valid, and revoke it on logout before clearing its cookies. Use HTTP-only, Secure, SameSite cookies for both tokens.
+
+Implemented in `backend/src/auth/`: the `Session` model stores the user ID, a SHA-256 digest of the refresh token, `lastActivityAt`, `expiresAt` and `revokedAt`. `JwtAuthGuard` checks and extends the session on every protected request in one atomic update. Each refresh token works once and is replaced on `POST /api/auth/refresh`. A TTL index removes sessions one day after they expire.

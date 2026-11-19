@@ -8,6 +8,7 @@ import { UserRole, UserStatus } from '../users/schemas/user.schema';
 import { UsersService } from '../users/users.service';
 import { AuthService, INVALID_CREDENTIALS_MESSAGE } from './auth.service';
 import { PasswordHasherService } from './password-hasher.service';
+import { SessionsService } from './sessions.service';
 import { TokenService } from './token.service';
 
 describe('AuthService', () => {
@@ -18,7 +19,17 @@ describe('AuthService', () => {
     resetFailedLogins: jest.fn(),
   };
   const passwordHasher = { hash: jest.fn(), verify: jest.fn() };
-  const tokenService = { signAccessToken: jest.fn() };
+  const tokenService = {
+    signAccessToken: jest.fn(),
+    verifyAccessToken: jest.fn(),
+  };
+  const sessionsService = {
+    create: jest.fn(),
+    rotate: jest.fn(),
+    revokeById: jest.fn(),
+    revokeByRefreshToken: jest.fn(),
+  };
+  const sessionId = new Types.ObjectId();
   let service: AuthService;
 
   const now = new Date('2026-11-19T10:00:00Z');
@@ -46,7 +57,12 @@ describe('AuthService', () => {
       usersService as unknown as UsersService,
       passwordHasher as unknown as PasswordHasherService,
       tokenService as unknown as TokenService,
+      sessionsService as unknown as SessionsService,
     );
+    sessionsService.create.mockResolvedValue({
+      session: { _id: sessionId, id: sessionId.toString() },
+      refreshToken: 'refresh-1',
+    });
   });
 
   describe('register (ACC-01)', () => {
@@ -93,7 +109,13 @@ describe('AuthService', () => {
         'travel2026',
         'scrypt$stored',
       );
+      expect(sessionsService.create).toHaveBeenCalledWith(id, now);
+      expect(tokenService.signAccessToken).toHaveBeenCalledWith(
+        expect.objectContaining({ _id: id }),
+        sessionId,
+      );
       expect(result.accessToken).toBe('signed.jwt');
+      expect(result.refreshToken).toBe('refresh-1');
       expect(result.user.id).toBe(id.toString());
       expect(result.user).not.toHaveProperty('passwordHash');
       expect(usersService.resetFailedLogins).not.toHaveBeenCalled();
@@ -192,5 +214,85 @@ describe('AuthService', () => {
         expect(tokenService.signAccessToken).not.toHaveBeenCalled();
       },
     );
+  });
+
+  describe('refresh (ACC-19)', () => {
+    const renewedSession = {
+      session: { _id: sessionId, id: sessionId.toString(), userId: id },
+      refreshToken: 'refresh-2',
+    };
+    const usersWithFindById = usersService as typeof usersService & {
+      findById: jest.Mock;
+    };
+
+    beforeEach(() => {
+      usersWithFindById.findById = jest.fn();
+    });
+
+    it('rotates the refresh token and issues a new access token', async () => {
+      sessionsService.rotate.mockResolvedValue(renewedSession);
+      usersWithFindById.findById.mockResolvedValue(storedUser());
+      tokenService.signAccessToken.mockResolvedValue('signed.jwt.2');
+
+      const result = await service.refresh('refresh-1', now);
+
+      expect(sessionsService.rotate).toHaveBeenCalledWith('refresh-1', now);
+      expect(result).toMatchObject({
+        accessToken: 'signed.jwt.2',
+        refreshToken: 'refresh-2',
+      });
+      expect(result.user.id).toBe(id.toString());
+    });
+
+    it('returns 401 when the session is expired, revoked or unknown', async () => {
+      sessionsService.rotate.mockResolvedValue(null);
+
+      await expect(service.refresh('old', now)).rejects.toThrow(
+        UnauthorizedException,
+      );
+    });
+
+    it('ends the session and returns 403 for a suspended account', async () => {
+      sessionsService.rotate.mockResolvedValue(renewedSession);
+      usersWithFindById.findById.mockResolvedValue(
+        storedUser({ status: UserStatus.SUSPENDED }),
+      );
+
+      await expect(service.refresh('refresh-1', now)).rejects.toThrow(
+        ForbiddenException,
+      );
+      expect(sessionsService.revokeById).toHaveBeenCalledWith(
+        sessionId.toString(),
+        now,
+      );
+      expect(tokenService.signAccessToken).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('logout (ACC-06)', () => {
+    it('revokes the session found through either cookie', async () => {
+      tokenService.verifyAccessToken.mockResolvedValue({ sid: 's1' });
+
+      await service.logout(
+        { refreshToken: 'refresh-1', accessToken: 'signed.jwt' },
+        now,
+      );
+
+      expect(sessionsService.revokeByRefreshToken).toHaveBeenCalledWith(
+        'refresh-1',
+        now,
+      );
+      expect(sessionsService.revokeById).toHaveBeenCalledWith('s1', now);
+    });
+
+    it('does nothing harmful without cookies or with a bad token', async () => {
+      tokenService.verifyAccessToken.mockRejectedValue(new Error('expired'));
+
+      await expect(service.logout({}, now)).resolves.toBeUndefined();
+      await expect(
+        service.logout({ accessToken: 'expired' }, now),
+      ).resolves.toBeUndefined();
+      expect(sessionsService.revokeById).not.toHaveBeenCalled();
+    });
   });
 });

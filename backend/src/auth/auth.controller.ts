@@ -4,28 +4,65 @@ import {
   HttpCode,
   HttpStatus,
   Post,
+  Req,
   Res,
+  UnauthorizedException,
 } from '@nestjs/common';
 import {
   ApiBadRequestResponse,
   ApiConflictResponse,
+  ApiCookieAuth,
   ApiCreatedResponse,
   ApiForbiddenResponse,
+  ApiNoContentResponse,
   ApiOkResponse,
   ApiOperation,
   ApiResponse,
   ApiTags,
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
-import type { Response } from 'express';
+import type { Request, Response } from 'express';
 import { UserResponseDto } from '../users/dto/user-response.dto';
 import {
   ACCESS_TOKEN_COOKIE,
   accessTokenCookieOptions,
+  clearCookieOptions,
+  REFRESH_TOKEN_COOKIE,
+  refreshTokenCookieOptions,
+  SESSION_EXPIRED_MESSAGE,
 } from './auth.constants';
-import { AuthService } from './auth.service';
+import { AuthResult, AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
+
+function readCookie(request: Request, name: string): string | undefined {
+  return (request.cookies as Record<string, string> | undefined)?.[name];
+}
+
+/** Puts both tokens in HttpOnly cookies; the body never contains them. */
+function setAuthCookies(response: Response, result: AuthResult): void {
+  response.cookie(
+    ACCESS_TOKEN_COOKIE,
+    result.accessToken,
+    accessTokenCookieOptions(),
+  );
+  response.cookie(
+    REFRESH_TOKEN_COOKIE,
+    result.refreshToken,
+    refreshTokenCookieOptions(),
+  );
+}
+
+function clearAuthCookies(response: Response): void {
+  response.clearCookie(
+    ACCESS_TOKEN_COOKIE,
+    clearCookieOptions(accessTokenCookieOptions()),
+  );
+  response.clearCookie(
+    REFRESH_TOKEN_COOKIE,
+    clearCookieOptions(refreshTokenCookieOptions()),
+  );
+}
 
 @ApiTags('Auth')
 @Controller('auth')
@@ -60,14 +97,16 @@ export class AuthController {
   @ApiOperation({
     summary: 'Log in (ACC-04, ACC-05)',
     description:
-      'Checks the email and password. On success the signed access token ' +
-      `(JWT) is set in the HttpOnly "${ACCESS_TOKEN_COOKIE}" cookie and is ` +
-      'never returned in the body. Five consecutive wrong passwords lock ' +
-      'the account for 15 minutes; a successful login resets the counter.',
+      'Checks the email and password and starts a session. Two HttpOnly ' +
+      `cookies are set: "${ACCESS_TOKEN_COOKIE}" (a JWT valid for 15 ` +
+      `minutes) and "${REFRESH_TOKEN_COOKIE}" (used by /api/auth/refresh). ` +
+      'Tokens are never returned in the body. Five consecutive wrong ' +
+      'passwords lock the account for 15 minutes; a successful login ' +
+      'resets the counter.',
   })
   @ApiOkResponse({
     type: UserResponseDto,
-    description: `Logged in. The ${ACCESS_TOKEN_COOKIE} cookie is set.`,
+    description: 'Logged in. Both cookies are set.',
   })
   @ApiBadRequestResponse({ description: 'Missing or invalid fields.' })
   @ApiUnauthorizedResponse({ description: 'Invalid email or password.' })
@@ -82,12 +121,61 @@ export class AuthController {
     @Body() dto: LoginDto,
     @Res({ passthrough: true }) response: Response,
   ): Promise<UserResponseDto> {
-    const { user, accessToken } = await this.authService.login(dto);
-    response.cookie(
-      ACCESS_TOKEN_COOKIE,
-      accessToken,
-      accessTokenCookieOptions(),
-    );
-    return user;
+    const result = await this.authService.login(dto);
+    setAuthCookies(response, result);
+    return result.user;
+  }
+
+  @Post('refresh')
+  @HttpCode(HttpStatus.OK)
+  @ApiCookieAuth()
+  @ApiOperation({
+    summary: 'Renew the session (ACC-19)',
+    description:
+      'Uses the refresh_token cookie to issue new access and refresh ' +
+      'cookies while the session is open. A session closes after 30 ' +
+      'minutes without an authenticated request, or at logout. Each ' +
+      'refresh token works only once.',
+  })
+  @ApiOkResponse({ type: UserResponseDto, description: 'Cookies renewed.' })
+  @ApiUnauthorizedResponse({
+    description: 'No session, or it expired or was logged out.',
+  })
+  @ApiForbiddenResponse({
+    description: 'The account is suspended or deactivated.',
+  })
+  async refresh(
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<UserResponseDto> {
+    const refreshToken = readCookie(request, REFRESH_TOKEN_COOKIE);
+    if (!refreshToken) {
+      throw new UnauthorizedException(SESSION_EXPIRED_MESSAGE);
+    }
+    const result = await this.authService.refresh(refreshToken);
+    setAuthCookies(response, result);
+    return result.user;
+  }
+
+  @Post('logout')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiCookieAuth()
+  @ApiOperation({
+    summary: 'Log out (ACC-06)',
+    description:
+      'Revokes the session on the server, then clears both cookies. Old ' +
+      'access and refresh tokens stop working immediately. Calling it ' +
+      'without a session is harmless.',
+  })
+  @ApiNoContentResponse({ description: 'Logged out; cookies cleared.' })
+  async logout(
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<void> {
+    await this.authService.logout({
+      accessToken: readCookie(request, ACCESS_TOKEN_COOKIE),
+      refreshToken: readCookie(request, REFRESH_TOKEN_COOKIE),
+    });
+    clearAuthCookies(response);
   }
 }

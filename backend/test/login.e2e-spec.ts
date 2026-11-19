@@ -1,4 +1,4 @@
-import { Controller, Get, INestApplication, UseGuards } from '@nestjs/common';
+import { INestApplication } from '@nestjs/common';
 import { getModelToken } from '@nestjs/mongoose';
 import { Test, TestingModule } from '@nestjs/testing';
 import { Model } from 'mongoose';
@@ -7,23 +7,9 @@ import { App } from 'supertest/types';
 import { AppModule } from '../src/app/app.module';
 import { configureApp } from '../src/app/configure-app';
 import { AuthModule } from '../src/auth/auth.module';
-import { CurrentUser } from '../src/auth/decorators/current-user.decorator';
-import { JwtAuthGuard } from '../src/auth/guards/jwt-auth.guard';
-import {
-  User,
-  UserDocument,
-  UserStatus,
-} from '../src/users/schemas/user.schema';
-
-/** Test-only protected route, standing in for /api/auth/me until it exists. */
-@Controller('e2e-probe')
-class ProbeController {
-  @Get()
-  @UseGuards(JwtAuthGuard)
-  whoAmI(@CurrentUser() user: UserDocument) {
-    return { id: user._id.toString(), email: user.email };
-  }
-}
+import { Session } from '../src/auth/schemas/session.schema';
+import { User, UserStatus } from '../src/users/schemas/user.schema';
+import { E2eProbeController } from './support/e2e-probe.controller';
 
 // All test accounts use this domain so cleanup never touches other records.
 const TEST_DOMAIN = 'acc04.e2e.test';
@@ -34,8 +20,16 @@ describe('POST /api/auth/login (ACC-04, ACC-05, e2e)', () => {
   let app: INestApplication<App>;
   let userModel: Model<User>;
 
-  const cleanUp = () =>
-    userModel.deleteMany({ email: new RegExp(`@${TEST_DOMAIN}$`) });
+  const cleanUp = async () => {
+    const users = await userModel.find({
+      email: new RegExp(`@${TEST_DOMAIN}$`),
+    });
+    const ids = users.map((user) => user._id);
+    await app
+      .get<Model<Session>>(getModelToken(Session.name))
+      .deleteMany({ userId: { $in: ids } });
+    await userModel.deleteMany({ _id: { $in: ids } });
+  };
 
   const login = (email: string, password: string) =>
     request(app.getHttpServer())
@@ -57,7 +51,7 @@ describe('POST /api/auth/login (ACC-04, ACC-05, e2e)', () => {
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule, AuthModule],
-      controllers: [ProbeController],
+      controllers: [E2eProbeController],
     }).compile();
 
     app = moduleFixture.createNestApplication();
