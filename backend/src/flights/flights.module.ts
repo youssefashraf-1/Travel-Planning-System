@@ -1,6 +1,8 @@
 import { AuthModule } from '../auth/auth.module';
 import { Airline, AirlineSchema } from '../airlines/schemas/airline.schema';
 import { Airport, AirportSchema } from '../airports/schemas/airport.schema';
+import { FlightSearchService } from './flight-search.service';
+import { FlightsReadController } from './flights-read.controller';
 import { FlightsController } from './flights.controller';
 import { FlightsService } from './flights.service';
 import { FlightStatusService } from './flight-status.service';
@@ -22,8 +24,8 @@ import {
       { name: CabinInventory.name, schema: CabinInventorySchema },
     ]),
   ],
-  controllers: [FlightsController],
-  providers: [FlightsService, FlightStatusService],
+  controllers: [FlightsReadController, FlightsController],
+  providers: [FlightsService, FlightStatusService, FlightSearchService],
   exports: [FlightsService, FlightStatusService],
 })
 export class FlightsModule {}
