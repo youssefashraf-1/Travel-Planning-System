@@ -11,7 +11,10 @@ import {
   CountrySchema,
 } from '../reference-data/schemas/country.schema';
 import { ReviewsModule } from '../reviews/reviews.module';
+import { Review, ReviewSchema } from '../reviews/schemas/review.schema';
 import { User, UserSchema } from '../users/schemas/user.schema';
+import { HotelSearchController } from './hotel-search.controller';
+import { HotelSearchService } from './hotel-search.service';
 import { HotelStayStatusService } from './hotel-stay-status.service';
 import { HotelsController } from './hotels.controller';
 import { HotelsService } from './hotels.service';
@@ -24,7 +27,7 @@ import {
 import { Room, RoomSchema } from './schemas/room.schema';
 
 /**
- * Hotel management (HTL-01 to HTL-10, HTL-15, HTL-22). Phase 8 booking uses
+ * Hotel management and search (HTL-01 to HTL-12, HTL-15, HTL-22). Phase 8 booking uses
  * RoomsService.lockAvailability(), roomIsFree() and checkStay().
  */
 @Module({
@@ -39,10 +42,17 @@ import { Room, RoomSchema } from './schemas/room.schema';
       { name: City.name, schema: CitySchema },
       { name: Country.name, schema: CountrySchema },
       { name: User.name, schema: UserSchema },
+      { name: Review.name, schema: ReviewSchema },
     ]),
   ],
-  controllers: [HotelsController],
-  providers: [HotelsService, RoomsService, HotelStayStatusService],
+  // Search first, so /hotels/search is not matched as /hotels/:id.
+  controllers: [HotelSearchController, HotelsController],
+  providers: [
+    HotelsService,
+    RoomsService,
+    HotelStayStatusService,
+    HotelSearchService,
+  ],
   exports: [RoomsService, HotelStayStatusService],
 })
 export class HotelsModule {}

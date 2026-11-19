@@ -338,3 +338,23 @@ transaction, and Phase 8 bookings must lock it too. Tests found and fixed
 a bug where partial edits cleared unsent fields. The student reviewed the
 results and a browser Swagger check before merging.
 ================================================
+
+================================================
+Date: 2026-11-19
+Student: MohamedShabrawy16003169
+Tool: Claude Code (Claude Opus 5.5)
+Related requirements: HTL-11, HTL-12, HTL-16, HTL-17, HTL-18, HTL-20,
+HTL-21, GEN-11, ACC-11
+Prompt summary:
+Finish Phase 8: hotel search and multi-room reservations, following the
+Phase 7 room-locking contract.
+How the output was used:
+Claude added hotel search with guest capacity, price and rating filters
+and sorting; multi-room reservations held together for 10 minutes inside
+a transaction that locks every room and re-checks it, so nothing is held
+if any room is taken; hold expiry; confirmation for the payment service
+to call; grouped reservation lists and details; and whole-reservation
+cancellation with the hotel's refund tiers. Tests include 8 simultaneous
+requests for one room (exactly one succeeds). The student reviewed the
+results and a browser Swagger check before merging.
+================================================
