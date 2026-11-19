@@ -358,3 +358,26 @@ cancellation with the hotel's refund tiers. Tests include 8 simultaneous
 requests for one room (exactly one succeeds). The student reviewed the
 results and a browser Swagger check before merging.
 ================================================
+
+================================================
+Date: 2026-11-19
+Student: MohamedShabrawy16003169
+Tool: Claude Code (Claude Opus 5.5)
+Related requirements: PAY-01, PAY-02, PAY-03, PAY-04, FLT-23, HTL-17
+Prompt summary:
+Finish Phase 9: Stripe test-mode payments and refunds for flight bookings
+and hotel reservations, following the Phase 6 and 8 confirmation
+contracts. The student created the Stripe sandbox and added the test key
+to backend/.env; the key was never shared with the AI tool.
+How the output was used:
+Claude added the policy view and acceptance, PaymentIntent creation with
+client secrets for Stripe Elements, a signature-checked webhook and direct
+Stripe checks that confirm bookings only after Stripe reports success,
+retry after declines, cancelling payments when holds end, automatic full
+refunds for late payments, and refund dispatch through the Stripe Refunds
+API with status tracking, notifications and status on booking details.
+Tests use a fake Stripe; one real sandbox payment, decline, retry and
+refund was checked through the app. A test exposed a bug where Stripe's
+decline test card name was rejected, which was fixed. The student reviewed
+the results before merging.
+================================================

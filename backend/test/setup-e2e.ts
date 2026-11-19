@@ -26,3 +26,8 @@ if (!/test/i.test(databaseName)) {
 }
 
 process.env.MONGODB_URI = testUri;
+
+// Tests use a fake Stripe (see payments.e2e-spec.ts) and must never reach
+// the real Stripe account, even when backend/.env holds a test key.
+process.env.STRIPE_SECRET_KEY = '';
+process.env.STRIPE_WEBHOOK_SECRET = '';

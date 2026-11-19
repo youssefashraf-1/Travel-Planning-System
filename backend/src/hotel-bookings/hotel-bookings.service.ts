@@ -285,7 +285,9 @@ export class HotelBookingsService {
     if (!booking) throw new NotFoundException(NOT_FOUND);
     assertOwnedBy(user, booking.userId, NOT_FOUND);
     const present = await this.presenter([booking], now);
-    return present(booking);
+    return Object.assign(present(booking), {
+      refund: await this.refundFor(booking._id),
+    });
   }
 
   /**
@@ -483,5 +485,29 @@ export class HotelBookingsService {
     if (!booking) throw new NotFoundException(NOT_FOUND);
     assertOwnedBy(user, booking.userId, NOT_FOUND);
     return booking;
+  }
+
+  /** PAY-03: the refund of this booking's successful payment, if any. */
+  private async refundFor(bookingId: Types.ObjectId) {
+    const payment = await this.payments
+      .findOne({
+        bookingModel: 'HotelBooking' as const,
+        bookingId,
+        status: PaymentStatus.SUCCEEDED,
+      })
+      .select('_id')
+      .lean()
+      .exec();
+    const refund = payment
+      ? await this.refunds.findOne({ paymentId: payment._id }).lean().exec()
+      : null;
+    return refund
+      ? {
+          id: refund._id.toString(),
+          amountMinorUnits: refund.amountMinorUnits,
+          currency: refund.currency,
+          status: refund.status,
+        }
+      : undefined;
   }
 }

@@ -16,7 +16,6 @@ import {
   Notification,
   NotificationType,
 } from '../notifications/schemas/notification.schema';
-import { Payment, PaymentStatus } from '../payments/schemas/payment.schema';
 import { HotelBooking } from './schemas/hotel-booking.schema';
 
 /**
@@ -36,7 +35,6 @@ export class HotelBookingLifecycleService
     @InjectModel(HotelBooking.name)
     private readonly bookings: Model<HotelBooking>,
     @InjectModel(Hotel.name) private readonly hotels: Model<Hotel>,
-    @InjectModel(Payment.name) private readonly payments: Model<Payment>,
     @InjectModel(Notification.name)
     private readonly notifications: Model<Notification>,
     private readonly rooms: RoomsService,
@@ -66,18 +64,8 @@ export class HotelBookingLifecycleService
         { $set: { status: BookingStatus.EXPIRED } },
       )
       .exec();
-    // PAY-01: the payment service must also cancel the Stripe intent and
-    // refuse a late success for these reservations.
-    await this.payments
-      .updateMany(
-        {
-          bookingModel: 'HotelBooking' as const,
-          bookingId: { $in: ids },
-          status: PaymentStatus.PENDING,
-        },
-        { $set: { status: PaymentStatus.CANCELLED } },
-      )
-      .exec();
+    // PAY-01: PaymentsService cancels the open Stripe PaymentIntents and
+    // refunds a payment that still succeeds after this.
     return result.modifiedCount;
   }
 

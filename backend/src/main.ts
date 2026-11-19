@@ -5,6 +5,8 @@ import { configureApp, setupSwagger } from './app/configure-app';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
     instrument: ObserveInstrument,
+    // Stripe webhooks are verified against the exact request body (PAY-01).
+    rawBody: true,
   });
   configureApp(app);
   setupSwagger(app);
