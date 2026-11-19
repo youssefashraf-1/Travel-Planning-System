@@ -42,7 +42,7 @@ Admins, travelers and the other kind of moderator get 403, and so does a moderat
 
 ```ts
 const flight = await this.flightModel.findById(id);
-if (!flight) throw new NotFoundException('Flight not found.');
+if (!flight) throw new NotFoundException("Flight not found.");
 assertManagesProvider(user, ProviderType.AIRLINE, flight.airlineId);
 ```
 
@@ -54,8 +54,8 @@ Bookings and private itineraries are visible only to their owner:
 
 ```ts
 const booking = await this.bookingModel.findById(id);
-if (!booking) throw new NotFoundException('Booking not found.');
-assertOwnedBy(user, booking.userId, 'Booking not found.');
+if (!booking) throw new NotFoundException("Booking not found.");
+assertOwnedBy(user, booking.userId, "Booking not found.");
 ```
 
 Anyone else gets the same 404 as for a missing record, so they cannot tell whether it exists. For lists, filter in the query, for example `{ userId: user._id }`. Admins viewing all bookings (ACC-17) and moderators viewing their provider's bookings (FLT-29, HTL-22) get their own routes. Don't add exceptions to `assertOwnedBy`.
