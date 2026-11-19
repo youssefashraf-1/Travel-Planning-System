@@ -30,7 +30,11 @@ export class PageInfoDto {
   totalPages: number;
 }
 
-export function pageInfo(page: number, totalItems: number): PageInfoDto {
+/** Plain paging fields, safe to spread into a response. */
+export function pageInfo(
+  page: number,
+  totalItems: number,
+): Pick<PageInfoDto, keyof PageInfoDto> {
   return {
     page,
     pageSize: PAGE_SIZE,
