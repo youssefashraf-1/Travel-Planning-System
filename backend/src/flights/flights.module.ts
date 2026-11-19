@@ -48,6 +48,6 @@ import {
     FlightManagementService,
     FlightBookingViewsService,
   ],
-  exports: [FlightsService, FlightStatusService],
+  exports: [FlightsService, FlightStatusService, FlightSearchService],
 })
 export class FlightsModule {}

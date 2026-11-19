@@ -6,3 +6,6 @@
 # Dependencies and macOS metadata
 node_modules/
 .DS_Store
+
+# Uploaded images (GEN-08) stay on the server
+backend/uploads/
