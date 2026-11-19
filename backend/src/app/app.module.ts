@@ -4,6 +4,7 @@ import { Module } from '@nestjs/common';
 import { createObserveModule } from '@nestjs/observe';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { AdminModule } from '../admin/admin.module';
 import { AirlinesModule } from '../airlines/airlines.module';
 import { AirportsModule } from '../airports/airports.module';
 import { AuthModule } from '../auth/auth.module';
@@ -49,6 +50,7 @@ export const { ObserveModule, ObserveInstrument } = createObserveModule();
 
     UsersModule,
     AuthModule,
+    AdminModule,
     ReferenceDataModule,
     AirlinesModule,
     AirportsModule,

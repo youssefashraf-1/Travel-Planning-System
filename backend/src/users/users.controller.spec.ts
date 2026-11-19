@@ -1,11 +1,13 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { AccountDeactivationService } from './account-deactivation.service';
 import { UsersController } from './users.controller';
 import { UsersService } from './users.service';
 
 describe('UsersController', () => {
   let controller: UsersController;
   const usersService = { updateProfile: jest.fn() };
+  const accountDeactivation = { deactivateOwnAccount: jest.fn() };
   const user = {
     _id: { toString: () => 'u1' },
     name: 'Mona Hassan',
@@ -22,7 +24,13 @@ describe('UsersController', () => {
     jest.resetAllMocks();
     const module: TestingModule = await Test.createTestingModule({
       controllers: [UsersController],
-      providers: [{ provide: UsersService, useValue: usersService }],
+      providers: [
+        { provide: UsersService, useValue: usersService },
+        {
+          provide: AccountDeactivationService,
+          useValue: accountDeactivation,
+        },
+      ],
     })
       .overrideGuard(JwtAuthGuard)
       .useValue({ canActivate: () => true })
@@ -53,5 +61,34 @@ describe('UsersController', () => {
       name: 'Mona H.',
     });
     expect(profile.name).toBe('Mona H.');
+  });
+
+  it('deactivates the signed-in account and clears the cookies', async () => {
+    const response = { clearCookie: jest.fn() };
+    const body = { currentPassword: 'travel2026', confirm: true };
+
+    await controller.deactivateMyAccount(user as any, body, response as any);
+
+    expect(accountDeactivation.deactivateOwnAccount).toHaveBeenCalledWith(
+      user._id,
+      body,
+    );
+    expect(response.clearCookie).toHaveBeenCalledTimes(2);
+  });
+
+  it('keeps the cookies when deactivation is refused', async () => {
+    accountDeactivation.deactivateOwnAccount.mockRejectedValue(
+      new Error('upcoming bookings'),
+    );
+    const response = { clearCookie: jest.fn() };
+
+    await expect(
+      controller.deactivateMyAccount(
+        user as any,
+        { currentPassword: 'travel2026', confirm: true },
+        response as any,
+      ),
+    ).rejects.toThrow('upcoming bookings');
+    expect(response.clearCookie).not.toHaveBeenCalled();
   });
 });

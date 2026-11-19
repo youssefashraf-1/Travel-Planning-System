@@ -3,6 +3,7 @@ import {
   Controller,
   Get,
   HttpCode,
+  Patch,
   HttpStatus,
   Post,
   Req,
@@ -28,46 +29,18 @@ import { UserResponseDto } from '../users/dto/user-response.dto';
 import type { UserDocument } from '../users/schemas/user.schema';
 import {
   ACCESS_TOKEN_COOKIE,
-  accessTokenCookieOptions,
-  clearCookieOptions,
   REFRESH_TOKEN_COOKIE,
-  refreshTokenCookieOptions,
   SESSION_EXPIRED_MESSAGE,
 } from './auth.constants';
-import { AuthResult, AuthService } from './auth.service';
+import { clearAuthCookies, readCookie, setAuthCookies } from './auth-cookies';
+import { AuthService } from './auth.service';
+import { AllowPendingPasswordChange } from './decorators/allow-pending-password-change.decorator';
 import { CurrentUser } from './decorators/current-user.decorator';
+import { ChangePasswordDto } from './dto/change-password.dto';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
+import type { AuthenticatedRequest } from './guards/jwt-auth.guard';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
-
-function readCookie(request: Request, name: string): string | undefined {
-  return (request.cookies as Record<string, string> | undefined)?.[name];
-}
-
-/** Puts both tokens in HttpOnly cookies; the body never contains them. */
-function setAuthCookies(response: Response, result: AuthResult): void {
-  response.cookie(
-    ACCESS_TOKEN_COOKIE,
-    result.accessToken,
-    accessTokenCookieOptions(),
-  );
-  response.cookie(
-    REFRESH_TOKEN_COOKIE,
-    result.refreshToken,
-    refreshTokenCookieOptions(),
-  );
-}
-
-function clearAuthCookies(response: Response): void {
-  response.clearCookie(
-    ACCESS_TOKEN_COOKIE,
-    clearCookieOptions(accessTokenCookieOptions()),
-  );
-  response.clearCookie(
-    REFRESH_TOKEN_COOKIE,
-    clearCookieOptions(refreshTokenCookieOptions()),
-  );
-}
 
 @ApiTags('Auth')
 @Controller('auth')
@@ -185,13 +158,15 @@ export class AuthController {
   }
   @Get('me')
   @UseGuards(JwtAuthGuard)
+  @AllowPendingPasswordChange()
   @ApiCookieAuth()
   @ApiOperation({
     summary: 'Get the signed-in account (ACC-04, ACC-19)',
     description:
       'The frontend calls this to learn who is logged in, using only the ' +
       'HttpOnly cookies. It also counts as activity for the 30-minute ' +
-      'session.',
+      'session. When mustChangePassword is true, the frontend should send ' +
+      'the user to change their password; other routes return 403 until then.',
   })
   @ApiOkResponse({ type: UserResponseDto })
   @ApiUnauthorizedResponse({
@@ -200,5 +175,35 @@ export class AuthController {
   @ApiForbiddenResponse({ description: 'The account is suspended.' })
   me(@CurrentUser() user: UserDocument): UserResponseDto {
     return UserResponseDto.fromUser(user);
+  }
+  @Patch('change-password')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @UseGuards(JwtAuthGuard)
+  @AllowPendingPasswordChange()
+  @ApiCookieAuth()
+  @ApiOperation({
+    summary: 'Change my password (ACC-08)',
+    description:
+      'Requires the current password and a new one with at least eight ' +
+      'characters, one letter and one digit, different from the current ' +
+      'one. Other browsers are logged out; this one stays signed in. This ' +
+      'also completes a required change after an admin reset (ACC-07a).',
+  })
+  @ApiNoContentResponse({ description: 'Password changed.' })
+  @ApiBadRequestResponse({
+    description:
+      'Current password is wrong, the new password breaks the rules, or ' +
+      'it equals the current one.',
+  })
+  @ApiUnauthorizedResponse({ description: 'Not logged in.' })
+  async changePassword(
+    @Req() request: AuthenticatedRequest,
+    @Body() dto: ChangePasswordDto,
+  ): Promise<void> {
+    await this.authService.changePassword(
+      request.user._id,
+      request.sessionId,
+      dto,
+    );
   }
 }

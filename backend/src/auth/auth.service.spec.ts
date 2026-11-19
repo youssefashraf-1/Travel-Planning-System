@@ -14,6 +14,8 @@ import { TokenService } from './token.service';
 describe('AuthService', () => {
   const usersService = {
     createTraveler: jest.fn(),
+    findById: jest.fn(),
+    setPassword: jest.fn(),
     findByEmail: jest.fn(),
     recordFailedLogin: jest.fn(),
     resetFailedLogins: jest.fn(),
@@ -25,6 +27,7 @@ describe('AuthService', () => {
   };
   const sessionsService = {
     create: jest.fn(),
+    revokeAllForUser: jest.fn(),
     rotate: jest.fn(),
     revokeById: jest.fn(),
     revokeByRefreshToken: jest.fn(),
@@ -221,17 +224,10 @@ describe('AuthService', () => {
       session: { _id: sessionId, id: sessionId.toString(), userId: id },
       refreshToken: 'refresh-2',
     };
-    const usersWithFindById = usersService as typeof usersService & {
-      findById: jest.Mock;
-    };
-
-    beforeEach(() => {
-      usersWithFindById.findById = jest.fn();
-    });
 
     it('rotates the refresh token and issues a new access token', async () => {
       sessionsService.rotate.mockResolvedValue(renewedSession);
-      usersWithFindById.findById.mockResolvedValue(storedUser());
+      usersService.findById.mockResolvedValue(storedUser());
       tokenService.signAccessToken.mockResolvedValue('signed.jwt.2');
 
       const result = await service.refresh('refresh-1', now);
@@ -254,7 +250,7 @@ describe('AuthService', () => {
 
     it('ends the session and returns 403 for a suspended account', async () => {
       sessionsService.rotate.mockResolvedValue(renewedSession);
-      usersWithFindById.findById.mockResolvedValue(
+      usersService.findById.mockResolvedValue(
         storedUser({ status: UserStatus.SUSPENDED }),
       );
 
@@ -293,6 +289,62 @@ describe('AuthService', () => {
         service.logout({ accessToken: 'expired' }, now),
       ).resolves.toBeUndefined();
       expect(sessionsService.revokeById).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('changePassword (ACC-08)', () => {
+    const change = {
+      currentPassword: 'travel2026',
+      newPassword: 'journey2027',
+    };
+
+    beforeEach(() => {
+      usersService.findById.mockResolvedValue(
+        storedUser({ mustChangePassword: true }),
+      );
+    });
+
+    it('stores the new hash, clears the reset flag and ends other sessions', async () => {
+      passwordHasher.verify
+        .mockResolvedValueOnce(true) // current password matches
+        .mockResolvedValueOnce(false); // new password differs
+      passwordHasher.hash.mockResolvedValue('scrypt$new');
+
+      await service.changePassword(id, 's1', change, now);
+
+      expect(usersService.findById).toHaveBeenCalledWith(id.toString(), {
+        includePasswordHash: true,
+      });
+      expect(usersService.setPassword).toHaveBeenCalledWith(
+        id,
+        'scrypt$new',
+        false,
+      );
+      expect(sessionsService.revokeAllForUser).toHaveBeenCalledWith(
+        id,
+        now,
+        's1',
+      );
+    });
+
+    it('rejects a wrong current password', async () => {
+      passwordHasher.verify.mockResolvedValue(false);
+
+      await expect(
+        service.changePassword(id, 's1', change, now),
+      ).rejects.toThrow('The current password is incorrect.');
+      expect(usersService.setPassword).not.toHaveBeenCalled();
+    });
+
+    it('rejects reusing the current password', async () => {
+      passwordHasher.verify.mockResolvedValue(true);
+
+      await expect(
+        service.changePassword(id, 's1', change, now),
+      ).rejects.toThrow(
+        'The new password must be different from the current password.',
+      );
+      expect(usersService.setPassword).not.toHaveBeenCalled();
     });
   });
 });

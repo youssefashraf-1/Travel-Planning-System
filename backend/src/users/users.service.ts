@@ -71,11 +71,40 @@ export class UsersService {
     return query.exec();
   }
 
-  async findById(id: string): Promise<UserDocument | null> {
+  async findById(
+    id: string,
+    options: { includePasswordHash?: boolean } = {},
+  ): Promise<UserDocument | null> {
     if (!Types.ObjectId.isValid(id)) {
       return null;
     }
-    return this.userModel.findById(id).exec();
+    const query = this.userModel.findById(id);
+    if (options.includePasswordHash) {
+      query.select('+passwordHash');
+    }
+    return query.exec();
+  }
+
+  /**
+   * Stores a new password hash (ACC-07a, ACC-08). It also clears any login
+   * lockout. mustChangePassword is true after an admin reset, so the user
+   * has to pick their own password at the next login.
+   */
+  async setPassword(
+    userId: Types.ObjectId,
+    passwordHash: string,
+    mustChangePassword: boolean,
+  ): Promise<UserDocument | null> {
+    return this.userModel
+      .findByIdAndUpdate(
+        userId,
+        {
+          $set: { passwordHash, mustChangePassword, failedLoginAttempts: 0 },
+          $unset: { lockedUntil: 1 },
+        },
+        { new: true },
+      )
+      .exec();
   }
 
   /**

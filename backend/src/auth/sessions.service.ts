@@ -117,4 +117,26 @@ export class SessionsService {
       )
       .exec();
   }
+
+  /**
+   * Ends every open session of a user, optionally keeping one (the browser
+   * that changed the password). Used after password changes, admin resets,
+   * suspension and deactivation.
+   */
+  async revokeAllForUser(
+    userId: Types.ObjectId,
+    now: Date,
+    exceptSessionId?: string,
+  ): Promise<void> {
+    const filter: Record<string, unknown> = {
+      userId,
+      revokedAt: { $exists: false },
+    };
+    if (exceptSessionId && Types.ObjectId.isValid(exceptSessionId)) {
+      filter._id = { $ne: new Types.ObjectId(exceptSessionId) };
+    }
+    await this.sessionModel
+      .updateMany(filter, { $set: { revokedAt: now } })
+      .exec();
+  }
 }

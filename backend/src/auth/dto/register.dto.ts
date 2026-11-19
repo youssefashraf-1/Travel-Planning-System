@@ -6,20 +6,20 @@ import {
   IsEmail,
   IsNotEmpty,
   IsString,
-  Matches,
   MaxLength,
-  MinLength,
 } from 'class-validator';
+import {
+  IsValidPassword,
+  PASSWORD_MAX_LENGTH,
+  PASSWORD_MIN_LENGTH,
+  PASSWORD_RULES_DESCRIPTION,
+} from './password-rules';
 
 const trim = ({ value }: { value: unknown }) =>
   typeof value === 'string' ? value.trim() : value;
 
 const trimAndLowercase = ({ value }: { value: unknown }) =>
   typeof value === 'string' ? value.trim().toLowerCase() : value;
-
-export const PASSWORD_MIN_LENGTH = 8;
-// Long enough for passphrases, short enough to bound hashing work.
-export const PASSWORD_MAX_LENGTH = 128;
 
 /** Self-registration request for a traveler account (ACC-01). */
 export class RegisterDto {
@@ -44,14 +44,9 @@ export class RegisterDto {
     example: 'travel2026',
     minLength: PASSWORD_MIN_LENGTH,
     maxLength: PASSWORD_MAX_LENGTH,
-    description:
-      'At least eight characters with at least one letter and one digit.',
+    description: PASSWORD_RULES_DESCRIPTION,
   })
-  @IsString()
-  @MinLength(PASSWORD_MIN_LENGTH)
-  @MaxLength(PASSWORD_MAX_LENGTH)
-  @Matches(/[A-Za-z]/, { message: 'password must contain at least one letter' })
-  @Matches(/\d/, { message: 'password must contain at least one digit' })
+  @IsValidPassword()
   password: string;
 
   @ApiProperty({
