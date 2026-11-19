@@ -107,6 +107,7 @@ docker stop tps-e2e-mongo
 - Password changes, account deactivation, administrator account actions and provider authorization are implemented; see [authorization guidance](docs/authorization.md).
 - Phase 5 flight endpoints are implemented: airline/policy management, read-only airports, flight/cabin creation and editing, search/details, cancellation and moderator booking/CSV views. [Flight progress and integration contracts](docs/requirements/phase5-progress.md) describe request fields, verification and remaining dependencies.
 - Phase 6 flight booking is implemented: price summary, 10-minute seat holds that never oversell, hold expiry, my bookings, details, cancellation with tiered refunds and e-ticket PDFs. All amounts are in EGP minor units. [Booking progress and the Phase 9 payment contract](docs/requirements/phase6-progress.md) explain how payment confirms a hold.
+- Phase 7 hotel management is implemented: hotel profiles and policies, rooms, bookable and blocked dates with reservation protection, the per-day room calendar, free rooms with stay prices, the moderator reservation list, and reviews with average ratings. [Hotel progress and the Phase 8 booking contract](docs/requirements/phase7-progress.md) explain how bookings must lock rooms.
 - Flight and booking cancellations record refunds as pending; Stripe payment and refund processing is Phase 9 work. Remaining hotel, payment, itinerary, community and supporting features still require implementation.
 - `frontend/` contains only `.gitkeep` so Git preserves the placeholder directory.
 

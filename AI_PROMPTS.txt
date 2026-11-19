@@ -317,3 +317,24 @@ PDFs. Tests cover passenger types, baggage, round trips, permissions,
 ownership, expiry and 8 simultaneous holds on a 3-seat cabin. The student
 reviewed the results and a browser Swagger check before merging.
 ================================================
+
+================================================
+Date: 2026-11-19
+Student: MohamedShabrawy16003169
+Tool: Claude Code (Claude Opus 5.5)
+Related requirements: HTL-01 to HTL-10, HTL-15, HTL-22, HTL-23, HTL-24,
+GEN-11, ACC-12
+Prompt summary:
+Finish Phase 7: hotel management, rooms and availability, the moderator
+calendar and reservations view, and reviews with eligibility.
+How the output was used:
+Claude added hotel profiles and policies, rooms with labels unique per
+hotel, bookable and blocked date ranges that cannot override confirmed or
+held reservations, room deactivation and deletion rules, the per-day room
+calendar, public free-room listings with stay prices, completion of
+finished stays, and one review per completed stay with average ratings.
+Room schedule changes lock the room's availability record in a
+transaction, and Phase 8 bookings must lock it too. Tests found and fixed
+a bug where partial edits cleared unsent fields. The student reviewed the
+results and a browser Swagger check before merging.
+================================================
