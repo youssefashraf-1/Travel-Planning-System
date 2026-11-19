@@ -6,24 +6,22 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model, Types } from 'mongoose';
+import { Model } from 'mongoose';
 import { Airline } from '../airlines/schemas/airline.schema';
 import { Airport } from '../airports/schemas/airport.schema';
 import { assertManagesProvider, ProviderType } from '../auth/access';
 import { UserDocument } from '../users/schemas/user.schema';
 import { CreateCabinDto } from './dto/create-cabin.dto';
 import { CreateFlightDto } from './dto/create-flight.dto';
-import { effectiveFlightStatus } from './flight-status.service';
+import { FlightManagementService } from './flight-management.service';
 import { airportLocalDateTime, airportLocalToUtc } from './local-date-time';
-import { CabinInventory } from './schemas/cabin-inventory.schema';
 import { Flight, FlightStatus } from './schemas/flight.schema';
 
 @Injectable()
 export class FlightsService {
   constructor(
     @InjectModel(Flight.name) private readonly flights: Model<Flight>,
-    @InjectModel(CabinInventory.name)
-    private readonly cabins: Model<CabinInventory>,
+    private readonly management: FlightManagementService,
     @InjectModel(Airline.name) private readonly airlines: Model<Airline>,
     @InjectModel(Airport.name) private readonly airports: Model<Airport>,
   ) {}
@@ -95,42 +93,8 @@ export class FlightsService {
     }
   }
 
-  async createCabin(
-    user: UserDocument,
-    flightId: string,
-    dto: CreateCabinDto,
-    now = new Date(),
-  ) {
-    const flight = Types.ObjectId.isValid(flightId)
-      ? await this.flights.findById(flightId).exec()
-      : null;
-    if (!flight) throw new NotFoundException('Flight not found.');
-    assertManagesProvider(user, ProviderType.AIRLINE, flight.airlineId);
-    if (effectiveFlightStatus(flight, now) !== FlightStatus.SCHEDULED) {
-      throw new ConflictException(
-        'Only a scheduled future flight can have cabins added.',
-      );
-    }
-    try {
-      const cabin = await this.cabins.create({
-        flightId: flight._id,
-        cabinClass: dto.cabinClass,
-        totalSeats: dto.totalSeats,
-        priceMinorUnits: dto.priceMinorUnits,
-        freeBagCount: dto.freeBagCount,
-        maxBagWeightKg: dto.maxBagWeightKg,
-        heldSeats: 0,
-        bookedSeats: 0,
-      });
-      return Object.assign(cabin.toObject(), {
-        seatsRemaining: cabin.totalSeats - cabin.heldSeats - cabin.bookedSeats,
-      });
-    } catch (error) {
-      this.rethrowDuplicate(
-        error,
-        'This cabin class already exists for this flight.',
-      );
-    }
+  createCabin(user: UserDocument, flightId: string, dto: CreateCabinDto) {
+    return this.management.addCabin(user, flightId, dto);
   }
 
   private rethrowDuplicate(error: unknown, message: string): never {

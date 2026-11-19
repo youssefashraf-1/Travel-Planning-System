@@ -1,3 +1,15 @@
+import { FlightBookingViewsService } from './flight-booking-views.service';
+import {
+  FlightBooking,
+  FlightBookingSchema,
+} from '../flight-bookings/schemas/flight-booking.schema';
+import {
+  Notification,
+  NotificationSchema,
+} from '../notifications/schemas/notification.schema';
+import { Payment, PaymentSchema } from '../payments/schemas/payment.schema';
+import { Refund, RefundSchema } from '../payments/schemas/refund.schema';
+import { FlightManagementService } from './flight-management.service';
 import { AuthModule } from '../auth/auth.module';
 import { Airline, AirlineSchema } from '../airlines/schemas/airline.schema';
 import { Airport, AirportSchema } from '../airports/schemas/airport.schema';
@@ -18,6 +30,10 @@ import {
   imports: [
     AuthModule,
     MongooseModule.forFeature([
+      { name: FlightBooking.name, schema: FlightBookingSchema },
+      { name: Notification.name, schema: NotificationSchema },
+      { name: Payment.name, schema: PaymentSchema },
+      { name: Refund.name, schema: RefundSchema },
       { name: Airline.name, schema: AirlineSchema },
       { name: Airport.name, schema: AirportSchema },
       { name: Flight.name, schema: FlightSchema },
@@ -25,7 +41,13 @@ import {
     ]),
   ],
   controllers: [FlightsReadController, FlightsController],
-  providers: [FlightsService, FlightStatusService, FlightSearchService],
+  providers: [
+    FlightsService,
+    FlightStatusService,
+    FlightSearchService,
+    FlightManagementService,
+    FlightBookingViewsService,
+  ],
   exports: [FlightsService, FlightStatusService],
 })
 export class FlightsModule {}

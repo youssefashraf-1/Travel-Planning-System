@@ -81,14 +81,15 @@ npm test -- --runInBand
 npm run lint
 ```
 
-Unit tests cover schema validation, reference data, registration, and the users service. End-to-end tests create and delete records, so they never use `MONGODB_URI`. Set `MONGODB_TEST_URI` in `.env` to a disposable database whose name contains `test`. With Docker, start one and run the tests:
+Unit tests cover schemas, accounts, authorization and flight rules. End-to-end tests create and delete records, so use only an isolated local test database. Set `MONGODB_TEST_URI` to a disposable database whose name contains `test`. Full flight-management tests require a MongoDB replica set because cancellation updates several collections atomically. Docker is optional; a locally installed `mongod` replica set works too. With Docker:
 
 ```bash
-docker run -d --rm --name tps-e2e-mongo -p 127.0.0.1:27018:27017 mongo:8.0
+docker run -d --rm --name tps-e2e-mongo -p 127.0.0.1:27018:27018 mongo:8.0 mongod --replSet tps-test --bind_ip_all --port 27018
+docker exec tps-e2e-mongo mongosh --port 27018 --eval 'rs.initiate({_id:"tps-test",members:[{_id:0,host:"localhost:27018"}]})'
 ```
 
 ```bash
-npm run test:e2e
+MONGODB_TEST_URI=mongodb://127.0.0.1:27018/travel_planning_system_test npm run test:e2e -- --runInBand
 ```
 
 ```bash
@@ -103,8 +104,9 @@ docker stop tps-e2e-mongo
 - Login (ACC-04, ACC-05) is available at `POST /api/auth/login`. It sets a signed 15-minute JWT in an HttpOnly cookie and locks an account for 15 minutes after five consecutive wrong passwords. Feature modules protect routes with `@UseGuards(JwtAuthGuard)` and read the signed-in user with `@CurrentUser()`.
 - Sessions (ACC-06, ACC-19): login also sets an HttpOnly `refresh_token` cookie and opens a server-side session that ends after 30 minutes without an authenticated request. `POST /api/auth/refresh` renews both cookies while the session is open, and `POST /api/auth/logout` revokes the session and clears both cookies.
 - `GET /api/auth/me` (ACC-19) returns the signed-in account from the cookies. `GET /api/users/me` (ACC-11) returns the user's own profile, and `PATCH /api/users/me` (ACC-09) edits name, phone and preferred currency, saving nothing unless every field is valid.
-- Password changes, account deactivation, and admin password reset are in progress.
-- Travel and booking features remain to be implemented against the assignment requirements.
+- Password changes, account deactivation, administrator account actions and provider authorization are implemented; see [authorization guidance](docs/authorization.md).
+- Phase 5 flight endpoints are implemented: airline/policy management, read-only airports, flight/cabin creation and editing, search/details, cancellation and moderator booking/CSV views. [Flight progress and integration contracts](docs/requirements/phase5-progress.md) describe request fields, verification and remaining dependencies.
+- Flight cancellation queues full refunds as pending; Stripe refund processing is Phase 9 work. Booking creation/hold expiry is Phase 6. Remaining hotel, payment, itinerary, community and supporting features still require implementation.
 - `frontend/` contains only `.gitkeep` so Git preserves the placeholder directory.
 
 Before starting new work, pull the latest `develop` changes and create a feature, fix, refactor, or documentation branch. Open a pull request into `develop` for team-leader review; merge milestone releases from `develop` into `main`. Commit source changes and the relevant lockfile; keep credentials, dependencies, and generated build output out of Git. Record material AI assistance in `AI_PROMPTS.txt` throughout development.
