@@ -1,15 +1,31 @@
-import { Body, Controller, Get, Patch, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Patch,
+  Res,
+  UseGuards,
+} from '@nestjs/common';
 import {
   ApiBadRequestResponse,
+  ApiConflictResponse,
   ApiCookieAuth,
+  ApiNoContentResponse,
   ApiForbiddenResponse,
   ApiOkResponse,
   ApiOperation,
   ApiTags,
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
+import type { Response } from 'express';
+import { clearAuthCookies } from '../auth/auth-cookies';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { AccountDeactivationService } from './account-deactivation.service';
+import { DeactivateAccountDto } from './dto/deactivate-account.dto';
 import { ProfileResponseDto } from './dto/profile-response.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import type { UserDocument } from './schemas/user.schema';
@@ -22,7 +38,10 @@ import { UsersService } from './users.service';
 @UseGuards(JwtAuthGuard)
 @Controller('users')
 export class UsersController {
-  constructor(private readonly usersService: UsersService) {}
+  constructor(
+    private readonly usersService: UsersService,
+    private readonly accountDeactivation: AccountDeactivationService,
+  ) {}
 
   @Get('me')
   @ApiOperation({
@@ -57,5 +76,29 @@ export class UsersController {
   ): Promise<ProfileResponseDto> {
     const updated = await this.usersService.updateProfile(user._id, changes);
     return ProfileResponseDto.fromUser(updated);
+  }
+  @Delete('me')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({
+    summary: 'Deactivate my account (ACC-12)',
+    description:
+      'Requires confirm: true and the current password. Blocked while the ' +
+      'user has upcoming confirmed bookings. The account cannot log in ' +
+      'afterwards; all its sessions end and the cookies are cleared.',
+  })
+  @ApiNoContentResponse({ description: 'Account deactivated.' })
+  @ApiBadRequestResponse({
+    description: 'Missing confirmation or wrong current password.',
+  })
+  @ApiConflictResponse({
+    description: 'The user has upcoming confirmed bookings.',
+  })
+  async deactivateMyAccount(
+    @CurrentUser() user: UserDocument,
+    @Body() dto: DeactivateAccountDto,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<void> {
+    await this.accountDeactivation.deactivateOwnAccount(user._id, dto);
+    clearAuthCookies(response);
   }
 }

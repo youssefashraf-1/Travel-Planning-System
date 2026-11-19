@@ -11,6 +11,7 @@ import { User } from '../../users/schemas/user.schema';
 export enum AuditAction {
   ACCOUNT_SUSPENDED = 'account_suspended',
   ACCOUNT_REACTIVATED = 'account_reactivated',
+  ACCOUNT_PASSWORD_RESET = 'account_password_reset',
   PROVIDER_DEACTIVATED = 'provider_deactivated',
   PROVIDER_REACTIVATED = 'provider_reactivated',
   CONTENT_HIDDEN = 'content_hidden',
@@ -21,6 +22,7 @@ export enum AuditAction {
 const targetModels: Record<AuditAction, readonly string[]> = {
   [AuditAction.ACCOUNT_SUSPENDED]: [User.name],
   [AuditAction.ACCOUNT_REACTIVATED]: [User.name],
+  [AuditAction.ACCOUNT_PASSWORD_RESET]: [User.name],
   [AuditAction.PROVIDER_DEACTIVATED]: [Airline.name, Hotel.name],
   [AuditAction.PROVIDER_REACTIVATED]: [Airline.name, Hotel.name],
   [AuditAction.CONTENT_HIDDEN]: reportableContentModels,

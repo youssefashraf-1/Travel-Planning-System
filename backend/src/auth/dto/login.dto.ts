@@ -1,7 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 import { IsEmail, IsNotEmpty, IsString, MaxLength } from 'class-validator';
-import { PASSWORD_MAX_LENGTH } from './register.dto';
+import { PASSWORD_MAX_LENGTH } from './password-rules';
 
 /** Login request (ACC-04). */
 export class LoginDto {

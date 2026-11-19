@@ -1,10 +1,12 @@
 import {
+  BadRequestException,
   ForbiddenException,
   HttpException,
   HttpStatus,
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
+import { Types } from 'mongoose';
 import { UserResponseDto } from '../users/dto/user-response.dto';
 import { UserStatus } from '../users/schemas/user.schema';
 import { UsersService } from '../users/users.service';
@@ -13,6 +15,7 @@ import {
   MAX_FAILED_LOGIN_ATTEMPTS,
   SESSION_EXPIRED_MESSAGE,
 } from './auth.constants';
+import { ChangePasswordDto } from './dto/change-password.dto';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { PasswordHasherService } from './password-hasher.service';
@@ -174,6 +177,47 @@ export class AuthService {
         // An invalid or expired access token has nothing left to revoke.
       }
     }
+  }
+
+  /**
+   * ACC-08: changes the password after checking the current one. The new
+   * password must follow the rules and differ from the current one. Other
+   * browsers are logged out; this one stays signed in. It also completes a
+   * required change after an admin reset (ACC-07a).
+   */
+  async changePassword(
+    userId: Types.ObjectId,
+    currentSessionId: string,
+    dto: ChangePasswordDto,
+    now = new Date(),
+  ): Promise<void> {
+    const user = await this.usersService.findById(userId.toString(), {
+      includePasswordHash: true,
+    });
+    if (!user) {
+      throw new UnauthorizedException(SESSION_EXPIRED_MESSAGE);
+    }
+
+    const currentMatches = await this.passwordHasher.verify(
+      dto.currentPassword,
+      user.passwordHash,
+    );
+    if (!currentMatches) {
+      throw new BadRequestException('The current password is incorrect.');
+    }
+    if (await this.passwordHasher.verify(dto.newPassword, user.passwordHash)) {
+      throw new BadRequestException(
+        'The new password must be different from the current password.',
+      );
+    }
+
+    const passwordHash = await this.passwordHasher.hash(dto.newPassword);
+    await this.usersService.setPassword(user._id, passwordHash, false);
+    await this.sessionsService.revokeAllForUser(
+      user._id,
+      now,
+      currentSessionId,
+    );
   }
 
   private getDummyHash(): Promise<string> {

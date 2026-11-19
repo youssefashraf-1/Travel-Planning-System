@@ -4,6 +4,7 @@ import {
   InternalServerErrorException,
   UnauthorizedException,
 } from '@nestjs/common';
+import { Reflector } from '@nestjs/core';
 import { UserStatus } from '../../users/schemas/user.schema';
 import { UsersService } from '../../users/users.service';
 import { SessionsService } from '../sessions.service';
@@ -14,16 +15,20 @@ describe('JwtAuthGuard', () => {
   const tokenService = { verifyAccessToken: jest.fn() };
   const sessionsService = { touch: jest.fn() };
   const usersService = { findById: jest.fn() };
+  const reflector = { getAllAndOverride: jest.fn() };
   const guard = new JwtAuthGuard(
     tokenService as unknown as TokenService,
     sessionsService as unknown as SessionsService,
     usersService as unknown as UsersService,
+    reflector as unknown as Reflector,
   );
 
   function contextWith(cookies?: Record<string, string>) {
     const request: Record<string, unknown> = { cookies };
     const context = {
       switchToHttp: () => ({ getRequest: () => request }),
+      getHandler: () => undefined,
+      getClass: () => undefined,
     } as unknown as ExecutionContext;
     return { context, request };
   }
@@ -106,5 +111,39 @@ describe('JwtAuthGuard', () => {
     await expect(
       guard.canActivate(contextWith({ access_token: 'x' }).context),
     ).rejects.toThrow(ForbiddenException);
+  });
+
+  describe('temporary password (ACC-07a)', () => {
+    const pendingUser = {
+      _id: 'u1',
+      status: UserStatus.ACTIVE,
+      mustChangePassword: true,
+    };
+
+    beforeEach(() => {
+      tokenService.verifyAccessToken.mockResolvedValue({
+        sub: 'u1',
+        sid: 's1',
+      });
+      usersService.findById.mockResolvedValue(pendingUser);
+    });
+
+    it('returns 403 on ordinary routes until the password is changed', async () => {
+      reflector.getAllAndOverride.mockReturnValue(undefined);
+
+      await expect(
+        guard.canActivate(contextWith({ access_token: 'x' }).context),
+      ).rejects.toThrow(
+        'You must change your temporary password before continuing.',
+      );
+    });
+
+    it('allows routes marked @AllowPendingPasswordChange()', async () => {
+      reflector.getAllAndOverride.mockReturnValue(true);
+
+      await expect(
+        guard.canActivate(contextWith({ access_token: 'x' }).context),
+      ).resolves.toBe(true);
+    });
   });
 });
