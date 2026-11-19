@@ -107,4 +107,11 @@ describe('UsersService', () => {
       expect(query.select).toHaveBeenCalledWith('+passwordHash');
     });
   });
+
+  describe('findById', () => {
+    it('returns null for an id that is not a valid ObjectId', async () => {
+      await expect(service.findById('not-an-id')).resolves.toBeNull();
+      expect(userModel.findById).not.toHaveBeenCalled();
+    });
+  });
 });

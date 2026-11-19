@@ -53,7 +53,7 @@ cd backend
 npm ci
 ```
 
-For a fresh clone, copy `.env.example` to `.env` and set `MONGODB_URI` to your MongoDB connection string. Keep an existing `.env` file unchanged. MongoDB must be reachable from your machine for the application to start.
+For a fresh clone, copy `.env.example` to `.env` and set `MONGODB_URI` to your MongoDB connection string. Set `JWT_ACCESS_SECRET` to your own random value of at least 32 characters (for example from `openssl rand -base64 48`); without it the backend still starts, but login returns an error. Keep an existing `.env` file unchanged. MongoDB must be reachable from your machine for the application to start.
 
 Seed the course reference data before starting the backend against a fresh database. Run this command from `backend/` after setting `MONGODB_URI`:
 
@@ -99,7 +99,9 @@ docker stop tps-e2e-mongo
 
 - NestJS application, environment loading, and MongoDB connection configuration are present.
 - Core and supporting schemas are registered with NestJS. Reference data can be loaded with `npm run seed:reference`.
-- Traveler registration (ACC-01) is available at `POST /api/auth/register`. Login, sessions, and the remaining account operations are in progress.
+- Traveler registration (ACC-01) is available at `POST /api/auth/register`.
+- Login (ACC-04, ACC-05) is available at `POST /api/auth/login`. It sets a signed JWT in an HttpOnly cookie and locks an account for 15 minutes after five consecutive wrong passwords. Feature modules protect routes with `@UseGuards(JwtAuthGuard)` and read the signed-in user with `@CurrentUser()`.
+- Logout, the 30-minute session, `/api/auth/me`, and the remaining account operations are in progress.
 - Travel and booking features remain to be implemented against the assignment requirements.
 - `frontend/` contains only `.gitkeep` so Git preserves the placeholder directory.
 

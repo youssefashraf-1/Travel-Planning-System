@@ -1,7 +1,10 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { User, UserRole, UserStatus } from '../schemas/user.schema';
 
-type UserRecord = Pick<User, 'name' | 'email' | 'role' | 'status'> & {
+type UserRecord = Pick<
+  User,
+  'name' | 'email' | 'role' | 'status' | 'mustChangePassword'
+> & {
   _id: { toString(): string };
   createdAt?: Date;
 };
@@ -26,6 +29,14 @@ export class UserResponseDto {
   @ApiProperty({ enum: UserStatus, example: UserStatus.ACTIVE })
   status: UserStatus;
 
+  @ApiProperty({
+    description:
+      'True when the user must set a new password before continuing ' +
+      '(admin reset or first moderator login).',
+    example: false,
+  })
+  mustChangePassword: boolean;
+
   @ApiProperty({ type: String, format: 'date-time' })
   createdAt?: Date;
 
@@ -36,6 +47,7 @@ export class UserResponseDto {
     response.email = user.email;
     response.role = user.role;
     response.status = user.status;
+    response.mustChangePassword = user.mustChangePassword ?? false;
     response.createdAt = user.createdAt;
     return response;
   }

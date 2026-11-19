@@ -1,6 +1,6 @@
 import { ConflictException, Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Model, Types } from 'mongoose';
 import { User, UserDocument, UserRole } from './schemas/user.schema';
 
 export interface CreateTravelerInput {
@@ -63,7 +63,60 @@ export class UsersService {
   }
 
   async findById(id: string): Promise<UserDocument | null> {
+    if (!Types.ObjectId.isValid(id)) {
+      return null;
+    }
     return this.userModel.findById(id).exec();
+  }
+
+  /**
+   * ACC-05: counts one failed login. On the fifth consecutive failure the
+   * account is locked until `now + lockoutMinutes` and the counter restarts.
+   * It runs as a single atomic update, so simultaneous wrong attempts are
+   * all counted. Returns the lock expiry if this failure locked the account.
+   */
+  async recordFailedLogin(
+    userId: Types.ObjectId,
+    now: Date,
+    maxAttempts: number,
+    lockoutMinutes: number,
+  ): Promise<{ lockedUntil?: Date }> {
+    const lockedUntil = new Date(now.getTime() + lockoutMinutes * 60_000);
+    const reachedLimit = {
+      $gte: [{ $add: ['$failedLoginAttempts', 1] }, maxAttempts],
+    };
+
+    const updated = await this.userModel
+      .findOneAndUpdate(
+        { _id: userId },
+        [
+          {
+            $set: {
+              lockedUntil: {
+                $cond: [reachedLimit, lockedUntil, '$lockedUntil'],
+              },
+              failedLoginAttempts: {
+                $cond: [reachedLimit, 0, { $add: ['$failedLoginAttempts', 1] }],
+              },
+            },
+          },
+        ],
+        { new: true, updatePipeline: true },
+      )
+      .exec();
+
+    const isNewLock = updated?.lockedUntil?.getTime() === lockedUntil.getTime();
+    return isNewLock ? { lockedUntil } : {};
+  }
+
+  /** ACC-05: a successful login clears the failure counter and any lock. */
+  async resetFailedLogins(userId: Types.ObjectId): Promise<void> {
+    await this.userModel
+      .updateOne(
+        { _id: userId },
+        { $set: { failedLoginAttempts: 0 }, $unset: { lockedUntil: 1 } },
+      )
+      .exec();
   }
 }
 

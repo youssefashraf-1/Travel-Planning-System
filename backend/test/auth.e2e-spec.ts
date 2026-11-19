@@ -58,7 +58,15 @@ describe('POST /api/auth/register (ACC-01, e2e)', () => {
     ).expect(201);
 
     expect(Object.keys(response.body).sort()).toEqual(
-      ['createdAt', 'email', 'id', 'name', 'role', 'status'].sort(),
+      [
+        'createdAt',
+        'email',
+        'id',
+        'mustChangePassword',
+        'name',
+        'role',
+        'status',
+      ].sort(),
     );
     expect(response.body).toMatchObject({
       name: 'Mona Hassan',
