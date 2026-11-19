@@ -371,6 +371,7 @@ export class FlightBookingsService {
         booking.status === BookingStatus.CONFIRMED
           ? this.cancellationQuote(booking, segments[0].departureAt, now)
           : undefined,
+      refund: await this.refundFor(booking._id),
       createdAt: booking.createdAt as Date,
     };
   }
@@ -920,5 +921,29 @@ export class FlightBookingsService {
     await this.lifecycle.expireDueHolds(now, {
       'segments.flightId': { $in: flightIds },
     });
+  }
+
+  /** PAY-03: the refund of this booking's successful payment, if any. */
+  private async refundFor(bookingId: Types.ObjectId) {
+    const payment = await this.payments
+      .findOne({
+        bookingModel: 'FlightBooking' as const,
+        bookingId,
+        status: PaymentStatus.SUCCEEDED,
+      })
+      .select('_id')
+      .lean()
+      .exec();
+    const refund = payment
+      ? await this.refunds.findOne({ paymentId: payment._id }).lean().exec()
+      : null;
+    return refund
+      ? {
+          id: refund._id.toString(),
+          amountMinorUnits: refund.amountMinorUnits,
+          currency: refund.currency,
+          status: refund.status,
+        }
+      : undefined;
   }
 }

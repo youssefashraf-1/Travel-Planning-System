@@ -92,6 +92,15 @@ export class CancellationQuoteDto {
   @ApiProperty({ example: 712500 }) refundMinorUnits: number;
 }
 
+/** PAY-03: the refund of this booking's payment, if there is one. */
+export class BookingRefundDto {
+  @ApiProperty() id: string;
+  @ApiProperty({ example: 475000 }) amountMinorUnits: number;
+  @ApiProperty({ example: 'EGP' }) currency: string;
+  @ApiProperty({ enum: ['pending', 'refunded', 'failed'] })
+  status: 'pending' | 'refunded' | 'failed';
+}
+
 export class FlightBookingDto extends FlightBookingSummaryDto {
   @ApiProperty() id: string;
   @ApiPropertyOptional({
@@ -113,6 +122,11 @@ export class FlightBookingDto extends FlightBookingSummaryDto {
     description: 'FLT-26: present for confirmed bookings.',
   })
   cancellation?: CancellationQuoteDto;
+  @ApiPropertyOptional({
+    type: BookingRefundDto,
+    description: 'PAY-03: present once a cancellation created a refund.',
+  })
+  refund?: BookingRefundDto;
   @ApiProperty({ type: String, format: 'date-time' }) createdAt: Date;
 }
 

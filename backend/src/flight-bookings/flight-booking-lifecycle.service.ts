@@ -15,7 +15,6 @@ import {
   Notification,
   NotificationType,
 } from '../notifications/schemas/notification.schema';
-import { Payment, PaymentStatus } from '../payments/schemas/payment.schema';
 import { newBookingReference, takesSeat } from './flight-booking-rules';
 import { FlightBooking } from './schemas/flight-booking.schema';
 
@@ -50,7 +49,6 @@ export class FlightBookingLifecycleService
     @InjectModel(Flight.name) private readonly flights: Model<Flight>,
     @InjectModel(CabinInventory.name)
     private readonly cabins: Model<CabinInventory>,
-    @InjectModel(Payment.name) private readonly payments: Model<Payment>,
     @InjectModel(Notification.name)
     private readonly notifications: Model<Notification>,
   ) {}
@@ -91,19 +89,8 @@ export class FlightBookingLifecycleService
           .exec();
         if (!booking) return false;
         await this.moveSeats(booking, session, { heldSeats: -1 });
-        // PAY-01: the payment service must also cancel the Stripe intent and
-        // refuse a late success for this booking.
-        await this.payments
-          .updateMany(
-            {
-              bookingModel: 'FlightBooking' as const,
-              bookingId: booking._id,
-              status: PaymentStatus.PENDING,
-            },
-            { $set: { status: PaymentStatus.CANCELLED } },
-            { session },
-          )
-          .exec();
+        // PAY-01: PaymentsService cancels the open Stripe PaymentIntent and
+        // refunds a payment that still succeeds after this.
         return true;
       });
       if (changed) expired++;
