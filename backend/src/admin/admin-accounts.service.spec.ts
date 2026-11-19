@@ -20,10 +20,17 @@ describe('AdminAccountsService', () => {
     exec: jest.fn().mockResolvedValue(result),
   });
 
-  const userModel = { findById: jest.fn(), findOneAndUpdate: jest.fn() };
+  const userModel = {
+    findById: jest.fn(),
+    findOneAndUpdate: jest.fn(),
+    find: jest.fn(),
+    countDocuments: jest.fn(),
+  };
+  const airlineModel = { exists: jest.fn() };
+  const hotelModel = { exists: jest.fn() };
   const auditLogModel = { create: jest.fn() };
   const notificationModel = { create: jest.fn() };
-  const usersService = { setPassword: jest.fn() };
+  const usersService = { setPassword: jest.fn(), createModerator: jest.fn() };
   const sessionsService = { revokeAllForUser: jest.fn() };
   const passwordHasher = { hash: jest.fn() };
   const service = new AdminAccountsService(
@@ -33,6 +40,8 @@ describe('AdminAccountsService', () => {
     usersService as unknown as UsersService,
     sessionsService as unknown as SessionsService,
     passwordHasher as unknown as PasswordHasherService,
+    airlineModel as any,
+    hotelModel as any,
   );
 
   const account = (overrides: Record<string, unknown> = {}) => ({
@@ -180,6 +189,84 @@ describe('AdminAccountsService', () => {
         service.resetPassword(adminId, accountId.toString(), 'Temp2026pass'),
       ).rejects.toThrow(ForbiddenException);
       expect(usersService.setPassword).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('createModerator (ACC-13)', () => {
+    const providerId = new Types.ObjectId();
+    const dto = {
+      name: 'Omar Fathy',
+      email: 'omar@example.com',
+      role: UserRole.AIRLINE_MODERATOR as const,
+      providerId: providerId.toString(),
+      temporaryPassword: 'Temp2026pass',
+    };
+
+    it('links the moderator to the existing airline', async () => {
+      airlineModel.exists.mockResolvedValue({ _id: providerId });
+      passwordHasher.hash.mockResolvedValue('scrypt$temp');
+
+      await service.createModerator(dto);
+
+      expect(airlineModel.exists).toHaveBeenCalledWith({ _id: providerId });
+      expect(hotelModel.exists).not.toHaveBeenCalled();
+      expect(usersService.createModerator).toHaveBeenCalledWith({
+        name: 'Omar Fathy',
+        email: 'omar@example.com',
+        passwordHash: 'scrypt$temp',
+        role: UserRole.AIRLINE_MODERATOR,
+        assignedProviderId: providerId,
+      });
+    });
+
+    it('checks hotels for a hotel moderator and returns 404 if missing', async () => {
+      hotelModel.exists.mockResolvedValue(null);
+
+      await expect(
+        service.createModerator({ ...dto, role: UserRole.HOTEL_MODERATOR }),
+      ).rejects.toThrow('Hotel not found.');
+      expect(airlineModel.exists).not.toHaveBeenCalled();
+      expect(usersService.createModerator).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('listAccounts (ACC-14)', () => {
+    const query = () => {
+      const chain: Record<string, jest.Mock> = {};
+      for (const method of ['sort', 'skip', 'limit', 'lean']) {
+        chain[method] = jest.fn(() => chain);
+      }
+      chain.exec = jest.fn().mockResolvedValue([account()]);
+      return chain;
+    };
+
+    it('combines search, role and status filters and pages by 10', async () => {
+      const chain = query();
+      userModel.find.mockReturnValue(chain);
+      userModel.countDocuments.mockReturnValue(exec(23));
+
+      const result = await service.listAccounts({
+        page: 3,
+        search: 'mo.na',
+        role: UserRole.TRAVELER,
+        status: UserStatus.ACTIVE,
+      });
+
+      const filter = userModel.find.mock.calls[0][0];
+      expect(filter.role).toBe(UserRole.TRAVELER);
+      expect(filter.status).toBe(UserStatus.ACTIVE);
+      // The dot is matched literally, not as "any character".
+      expect(filter.$or[0].name.test('MO.NA')).toBe(true);
+      expect(filter.$or[0].name.test('moxna')).toBe(false);
+      expect(chain.skip).toHaveBeenCalledWith(20);
+      expect(chain.limit).toHaveBeenCalledWith(10);
+      expect(result).toMatchObject({
+        page: 3,
+        pageSize: 10,
+        totalItems: 23,
+        totalPages: 3,
+      });
+      expect(result.items[0]).not.toHaveProperty('passwordHash');
     });
   });
 });

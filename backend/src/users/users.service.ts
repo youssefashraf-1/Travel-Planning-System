@@ -10,6 +10,14 @@ import { Currency } from '../reference-data/schemas/currency.schema';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { User, UserDocument, UserRole } from './schemas/user.schema';
 
+export interface CreateModeratorInput {
+  name: string;
+  email: string;
+  passwordHash: string;
+  role: UserRole.AIRLINE_MODERATOR | UserRole.HOTEL_MODERATOR;
+  assignedProviderId: Types.ObjectId;
+}
+
 export interface CreateTravelerInput {
   name: string;
   email: string;
@@ -45,6 +53,30 @@ export class UsersService {
         passwordHash: input.passwordHash,
         role: UserRole.TRAVELER,
         termsAndPrivacyAcceptedAt: input.termsAndPrivacyAcceptedAt,
+      });
+    } catch (error) {
+      if (isDuplicateEmailError(error)) {
+        throw new ConflictException(
+          'An account with this email already exists.',
+        );
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Creates a moderator account (ACC-13). The moderator must change the
+   * temporary password on first login.
+   */
+  async createModerator(input: CreateModeratorInput): Promise<UserDocument> {
+    try {
+      return await this.userModel.create({
+        name: input.name,
+        email: normalizeEmail(input.email),
+        passwordHash: input.passwordHash,
+        role: input.role,
+        assignedProviderId: input.assignedProviderId,
+        mustChangePassword: true,
       });
     } catch (error) {
       if (isDuplicateEmailError(error)) {

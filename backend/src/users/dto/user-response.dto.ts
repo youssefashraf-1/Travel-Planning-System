@@ -1,10 +1,11 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { User, UserRole, UserStatus } from '../schemas/user.schema';
 
 type UserRecord = Pick<
   User,
   'name' | 'email' | 'role' | 'status' | 'mustChangePassword'
 > & {
+  assignedProviderId?: { toString(): string } | null;
   _id: { toString(): string };
   createdAt?: Date;
 };
@@ -37,6 +38,12 @@ export class UserResponseDto {
   })
   mustChangePassword: boolean;
 
+  @ApiPropertyOptional({
+    example: '6740f0c2a1b2c3d4e5f60719',
+    description: 'Moderators only: the airline or hotel this account manages.',
+  })
+  assignedProviderId?: string;
+
   @ApiProperty({ type: String, format: 'date-time' })
   createdAt?: Date;
 
@@ -48,6 +55,9 @@ export class UserResponseDto {
     response.role = user.role;
     response.status = user.status;
     response.mustChangePassword = user.mustChangePassword ?? false;
+    if (user.assignedProviderId) {
+      response.assignedProviderId = user.assignedProviderId.toString();
+    }
     response.createdAt = user.createdAt;
     return response;
   }
