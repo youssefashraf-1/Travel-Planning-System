@@ -190,23 +190,35 @@ export class PaymentsService
         `This booking already has a payment in progress. Retry it with POST /api/payments/${existing._id.toString()}/retry.`,
       );
 
-    const attempt = await this.payments
-      .countDocuments({ bookingModel: name, bookingId: booking._id })
-      .exec();
+    // One intent per 10-minute booking hold. Retries reuse this intent, and
+    // concurrent requests use the same key rather than a racy attempt count.
     const intent = await this.stripe.createIntent({
       amountMinorUnits: booking.totalMinorUnits,
       currency: booking.currency,
       metadata: { bookingModel: name, bookingId: booking._id.toString() },
-      idempotencyKey: `payment-${name}-${booking._id.toString()}-${attempt}`,
+      idempotencyKey: `payment-${name}-${booking._id.toString()}`,
     });
-    const payment = await this.payments.create({
-      bookingModel: name,
-      bookingId: booking._id,
-      stripePaymentIntentId: intent.id,
-      amountMinorUnits: intent.amount,
-      currency: intent.currency.toUpperCase(),
-      status: PaymentStatus.PENDING,
-    });
+    let payment;
+    try {
+      payment = await this.payments.create({
+        bookingModel: name,
+        bookingId: booking._id,
+        stripePaymentIntentId: intent.id,
+        amountMinorUnits: intent.amount,
+        currency: intent.currency.toUpperCase(),
+        status: PaymentStatus.PENDING,
+      });
+    } catch (error) {
+      if ((error as { code?: number }).code !== 11000) throw error;
+      const sameIntent = await this.payments
+        .findOne({ stripePaymentIntentId: intent.id })
+        .lean()
+        .exec();
+      if (!sameIntent) throw error;
+      throw new ConflictException(
+        `This booking already has a payment in progress. Retry it with POST /api/payments/${sameIntent._id.toString()}/retry.`,
+      );
+    }
     return this.afterIntent(payment.toObject(), intent, dto.testPaymentMethod);
   }
 
@@ -220,8 +232,13 @@ export class PaymentsService
     const { payment, booking } = await this.findOwnPayment(user, id);
     await this.refresh(payment, now);
     const current = (await this.payments.findById(payment._id).lean().exec())!;
-    if (current.status === PaymentStatus.SUCCEEDED)
-      throw new ConflictException('This payment has already succeeded.');
+    if (
+      current.status === PaymentStatus.SUCCEEDED ||
+      current.stripeReconciledAt
+    )
+      throw new ConflictException(
+        'This payment is already settled. Check its refund status if applicable.',
+      );
     if (current.status === PaymentStatus.CANCELLED)
       throw new ConflictException(
         'This payment was cancelled because the hold ended. Book again.',
@@ -310,8 +327,17 @@ export class PaymentsService
     if (status !== PaymentStatus.SUCCEEDED) {
       await this.payments
         .updateOne(
-          { _id: payment._id, status: { $ne: PaymentStatus.SUCCEEDED } },
-          { $set: { status } },
+          {
+            _id: payment._id,
+            status: { $ne: PaymentStatus.SUCCEEDED },
+            stripeReconciledAt: { $exists: false },
+          },
+          {
+            $set:
+              status === PaymentStatus.CANCELLED
+                ? { status, stripeReconciledAt: now }
+                : { status },
+          },
         )
         .exec();
       return;
@@ -321,7 +347,12 @@ export class PaymentsService
         const changed = await this.payments
           .updateOne(
             { _id: payment._id, status: { $ne: PaymentStatus.SUCCEEDED } },
-            { $set: { status: PaymentStatus.SUCCEEDED } },
+            {
+              $set: {
+                status: PaymentStatus.SUCCEEDED,
+                stripeReconciledAt: now,
+              },
+            },
             { session },
           )
           .exec();
@@ -334,7 +365,8 @@ export class PaymentsService
     } catch (error) {
       if (
         !(error instanceof ConflictException) &&
-        !(error instanceof NotFoundException)
+        !(error instanceof NotFoundException) &&
+        !isDuplicateBookingPayment(error)
       )
         throw error;
       await this.refundLateSuccess(payment);
@@ -356,12 +388,17 @@ export class PaymentsService
    */
   async sweep(now = new Date()): Promise<void> {
     try {
-      const open = await this.payments
-        .find({ status: { $in: OPEN } })
-        .limit(100)
+      // Include legacy/provider-cancelled local rows until Stripe itself has
+      // been reconciled. A cursor avoids starving closed bookings behind a
+      // fixed first page of still-payable payments.
+      const unresolved = this.payments
+        .find({
+          stripeReconciledAt: { $exists: false },
+          status: { $in: [...OPEN, PaymentStatus.CANCELLED] },
+        })
         .lean()
-        .exec();
-      for (const payment of open) {
+        .cursor();
+      for await (const payment of unresolved) {
         const booking = await this.targets.find(
           payment.bookingModel,
           payment.bookingId,
@@ -386,6 +423,23 @@ export class PaymentsService
   }
 
   private async refundLateSuccess(payment: PaymentDoc): Promise<void> {
+    // The unique paymentId index and equality upsert make duplicate webhook
+    // deliveries converge on one refund. Mark reconciliation only AFTER this
+    // durable record exists, so a crash can safely retry.
+    await this.refunds
+      .updateOne(
+        { paymentId: payment._id },
+        {
+          $setOnInsert: {
+            paymentId: payment._id,
+            amountMinorUnits: payment.amountMinorUnits,
+            currency: payment.currency,
+            status: RefundStatus.PENDING,
+          },
+        },
+        { upsert: true, runValidators: true },
+      )
+      .exec();
     try {
       await this.payments
         .updateOne(
@@ -396,15 +450,14 @@ export class PaymentsService
     } catch (error) {
       // Another payment already succeeded for this booking: keep this one's
       // status, and still refund it below.
-      if ((error as { code?: number }).code !== 11000) throw error;
+      if (!isDuplicateBookingPayment(error)) throw error;
     }
-    if (await this.refunds.exists({ paymentId: payment._id })) return;
-    await this.refunds.create({
-      paymentId: payment._id,
-      amountMinorUnits: payment.amountMinorUnits,
-      currency: payment.currency,
-      status: RefundStatus.PENDING,
-    });
+    await this.payments
+      .updateOne(
+        { _id: payment._id },
+        { $set: { stripeReconciledAt: new Date() } },
+      )
+      .exec();
     this.logger.warn(
       `Payment ${payment._id.toString()} succeeded after its booking could no longer be confirmed; a full refund was queued.`,
     );
@@ -445,13 +498,15 @@ export class PaymentsService
   private async refresh(payment: PaymentDoc, now: Date) {
     if (
       payment.status === PaymentStatus.SUCCEEDED ||
-      payment.status === PaymentStatus.CANCELLED
+      payment.stripeReconciledAt
     )
       return;
     try {
       await this.applyIntent(
         payment,
-        await this.stripe.retrieveIntent(payment.stripePaymentIntentId),
+        payment.status === PaymentStatus.CANCELLED
+          ? await this.stripe.cancelIntent(payment.stripePaymentIntentId)
+          : await this.stripe.retrieveIntent(payment.stripePaymentIntentId),
         now,
       );
     } catch (error) {
@@ -471,15 +526,32 @@ export class PaymentsService
       payment.bookingModel,
       payment.bookingId,
     ))!;
+    const refund = await this.refunds
+      .findOne({ paymentId: payment._id })
+      .lean()
+      .exec();
     return {
       id: payment._id.toString(),
       bookingType: TYPE_FOR[payment.bookingModel],
       bookingId: payment.bookingId.toString(),
       amountMinorUnits: payment.amountMinorUnits,
       currency: payment.currency,
-      status: payment.status,
+      // Legacy extra captures cannot share the booking's unique succeeded
+      // slot. A refund record still proves this intent was captured.
+      status: refund ? PaymentStatus.SUCCEEDED : payment.status,
+      refund: refund
+        ? {
+            id: refund._id.toString(),
+            amountMinorUnits: refund.amountMinorUnits,
+            currency: refund.currency,
+            status: refund.status,
+          }
+        : undefined,
       clientSecret:
-        clientSecret && OPEN.includes(payment.status)
+        clientSecret &&
+        OPEN.includes(payment.status) &&
+        !payment.stripeReconciledAt &&
+        !refund
           ? clientSecret
           : undefined,
       bookingStatus: booking.status,
@@ -522,4 +594,18 @@ export class PaymentsService
         'The hold has expired. Make a new booking to pay.',
       );
   }
+}
+
+/** Only the succeeded-per-booking index, not unrelated duplicate keys. */
+function isDuplicateBookingPayment(error: unknown): boolean {
+  if (typeof error !== 'object' || error === null) return false;
+  const mongo = error as {
+    code?: number;
+    keyPattern?: Record<string, unknown>;
+  };
+  return (
+    mongo.code === 11000 &&
+    !!mongo.keyPattern?.bookingModel &&
+    !!mongo.keyPattern?.bookingId
+  );
 }

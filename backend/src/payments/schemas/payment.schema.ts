@@ -49,6 +49,10 @@ export class Payment {
     default: PaymentStatus.PENDING,
   })
   status: PaymentStatus;
+
+  /** Remote cancellation/success is verified, or a captured extra charge has a durable refund record. */
+  @Prop({ type: Date })
+  stripeReconciledAt?: Date;
 }
 
 export const PaymentSchema = SchemaFactory.createForClass(Payment);

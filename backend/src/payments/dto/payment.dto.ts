@@ -64,6 +64,13 @@ export class RetryPaymentDto {
   testPaymentMethod?: string;
 }
 
+export class PaymentRefundDto {
+  @ApiProperty() id: string;
+  @ApiProperty() amountMinorUnits: number;
+  @ApiProperty() currency: string;
+  @ApiProperty({ enum: RefundStatus }) status: RefundStatus;
+}
+
 export class PaymentDto {
   @ApiProperty() id: string;
   @ApiProperty({ enum: BookingType }) bookingType: BookingType;
@@ -77,6 +84,12 @@ export class PaymentDto {
       'failed: declined; retry while the hold lasts. cancelled: the hold ended.',
   })
   status: PaymentStatus;
+  @ApiPropertyOptional({
+    type: PaymentRefundDto,
+    description:
+      'Refund for this exact payment, including an extra captured attempt.',
+  })
+  refund?: PaymentRefundDto;
   @ApiPropertyOptional({
     description:
       'For Stripe Elements on the frontend. Only returned when the payment ' +

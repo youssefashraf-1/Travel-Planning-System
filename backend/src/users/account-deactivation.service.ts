@@ -11,6 +11,7 @@ import { SessionsService } from '../auth/sessions.service';
 import { BookingStatus } from '../common/booking-status';
 import { FlightBooking } from '../flight-bookings/schemas/flight-booking.schema';
 import { Flight } from '../flights/schemas/flight.schema';
+import { hotelNow } from '../hotels/hotel-dates';
 import { HotelBooking } from '../hotel-bookings/schemas/hotel-booking.schema';
 import { DeactivateAccountDto } from './dto/deactivate-account.dto';
 import { User, UserStatus } from './schemas/user.schema';
@@ -72,21 +73,30 @@ export class AccountDeactivationService {
 
   /**
    * A confirmed flight booking is upcoming while any of its flights has not
-   * departed. A confirmed hotel booking is upcoming until its check-out date.
+   * departed. A confirmed hotel booking blocks deactivation until its local
+   * check-out date AND policy time, matching hotel completion semantics.
    */
   async hasUpcomingConfirmedBookings(
     userId: Types.ObjectId,
     now: Date,
   ): Promise<boolean> {
-    const today = now.toISOString().slice(0, 10);
-    const upcomingStay = await this.hotelBookingModel.exists({
-      userId,
-      status: BookingStatus.CONFIRMED,
-      checkOutDate: { $gt: today },
-    });
-    if (upcomingStay) {
+    const stays = await this.hotelBookingModel
+      .find({ userId, status: BookingStatus.CONFIRMED })
+      .select('checkOutDate timeZone policy.checkOutTime')
+      .lean()
+      .exec();
+    if (
+      stays.some((stay) => {
+        // A legacy confirmed record without checkout metadata cannot safely
+        // be declared completed. Keep the account active until it is repaired.
+        if (!stay.timeZone || !stay.policy?.checkOutTime) return true;
+        return (
+          `${stay.checkOutDate}T${stay.policy.checkOutTime}` >
+          hotelNow(stay.timeZone, now).dateTime
+        );
+      })
+    )
       return true;
-    }
 
     const confirmedFlights = await this.flightBookingModel
       .find({ userId, status: BookingStatus.CONFIRMED })
