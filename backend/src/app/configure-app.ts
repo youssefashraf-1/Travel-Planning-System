@@ -4,8 +4,13 @@ import {
   ValidationPipe,
 } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import type { NestExpressApplication } from '@nestjs/platform-express';
 import cookieParser from 'cookie-parser';
 import { ACCESS_TOKEN_COOKIE } from '../auth/auth.constants';
+import {
+  UPLOADS_URL_PREFIX,
+  uploadsDirectory,
+} from '../common/uploads/image-uploads.service';
 
 export const API_PREFIX = 'api';
 export const API_DOCS_PATH = `${API_PREFIX}/docs`;
@@ -17,6 +22,15 @@ export const API_DOCS_PATH = `${API_PREFIX}/docs`;
  * server-controlled values such as a user's role.
  */
 export function configureApp(app: INestApplication): void {
+  // GEN-08: uploaded images are served by URL. nosniff stops browsers from
+  // treating an image as anything else.
+  (app as NestExpressApplication).useStaticAssets(uploadsDirectory(), {
+    prefix: UPLOADS_URL_PREFIX,
+    index: false,
+    dotfiles: 'deny',
+    setHeaders: (res) => res.setHeader('X-Content-Type-Options', 'nosniff'),
+  });
+
   // Reads the HttpOnly login cookie on incoming requests.
   app.use(cookieParser());
 

@@ -381,3 +381,25 @@ refund was checked through the app. A test exposed a bug where Stripe's
 decline test card name was rejected, which was fixed. The student reviewed
 the results before merging.
 ================================================
+
+================================================
+Date: 2026-11-19
+Student: MohamedShabrawy16003169
+Tool: Claude Code (Claude Opus 5.5)
+Related requirements: ITN-01, ITN-03, ITN-05, ITN-07 to ITN-10, ITN-12,
+ITN-14, ITN-16, ITN-18, ITN-20, ITN-21, ITN-25, ITN-26, GEN-08, ACC-12
+Prompt summary:
+Finish Phase 10: itineraries and budgeting, including FXRatesAPI currency
+conversion through the backend.
+How the output was used:
+Claude added itinerary, day, activity, budget and transport endpoints with
+ownership checks and version-checked saves; automatic day numbering, dates
+and city groups; a shared JPG/PNG upload service (GEN-08) for activity
+photos; daily cached FXRatesAPI rates with fallback to the last cached
+rates and correct handling of currencies without minor units; budget
+totals by category, day and city group; public search, read-only view and
+independent clones crediting the original author; and hotel and flight
+search from an itinerary. Tests stub the exchange-rate API. A real
+FXRatesAPI check was done through Swagger. The student reviewed the
+results before merging.
+================================================

@@ -53,6 +53,6 @@ import { Room, RoomSchema } from './schemas/room.schema';
     HotelStayStatusService,
     HotelSearchService,
   ],
-  exports: [RoomsService, HotelStayStatusService],
+  exports: [RoomsService, HotelStayStatusService, HotelSearchService],
 })
 export class HotelsModule {}
