@@ -1,3 +1,6 @@
+import { FlightManagementService } from '../src/flights/flight-management.service';
+import { AccountDeactivationService } from '../src/users/account-deactivation.service';
+import { UserStatus } from '../src/users/schemas/user.schema';
 import { INestApplication } from '@nestjs/common';
 import { getModelToken } from '@nestjs/mongoose';
 import { Test } from '@nestjs/testing';
@@ -54,11 +57,20 @@ class FakeStripe {
   refundCalls: { paymentIntentId: string; amountMinorUnits: number }[] = [];
   private refundsByKey = new Map<string, RefundState>();
   private count = 0;
+  private intentsByKey = new Map<string, string>();
+  cancelCalls: string[] = [];
 
   isTestMode() {
     return true;
   }
-  async createIntent(input: { amountMinorUnits: number; currency: string }) {
+  async createIntent(input: {
+    amountMinorUnits: number;
+    currency: string;
+    idempotencyKey?: string;
+  }) {
+    const existingId =
+      input.idempotencyKey && this.intentsByKey.get(input.idempotencyKey);
+    if (existingId) return { ...this.intents.get(existingId)! };
     const id = `pi_fake_${++this.count}`;
     const intent: IntentState = {
       id,
@@ -68,6 +80,7 @@ class FakeStripe {
       clientSecret: `${id}_secret_test`,
     };
     this.intents.set(id, intent);
+    if (input.idempotencyKey) this.intentsByKey.set(input.idempotencyKey, id);
     return { ...intent };
   }
   async retrieveIntent(id: string) {
@@ -85,6 +98,7 @@ class FakeStripe {
     return { ...intent };
   }
   async cancelIntent(id: string) {
+    this.cancelCalls.push(id);
     const intent = this.intents.get(id)!;
     if (intent.status !== 'succeeded') intent.status = 'canceled';
     return { ...intent };
@@ -746,6 +760,184 @@ describe('Payments and refunds (PAY-01 to PAY-04, e2e)', () => {
       expect((await models.refunds.findById(stored!._id))!.status).toBe(
         RefundStatus.FAILED,
       );
+    });
+  });
+  describe('audit regressions', () => {
+    it('refunds a successful charge discovered after provider cancellation even without a webhook', async () => {
+      const bookingId = await holdFlight();
+      await accept('flight', bookingId);
+      const response = await pay('flight', bookingId).expect(201);
+      const payment = (await models.payments.findById(response.body.id))!;
+      // Legacy provider cancellation has already closed the local payment.
+      await models.flightBookings.updateOne(
+        { _id: bookingId },
+        { $set: { status: BookingStatus.EXPIRED } },
+      );
+      await models.payments.updateOne(
+        { _id: payment._id },
+        { $set: { status: PaymentStatus.CANCELLED } },
+      );
+      stripe.intents.get(payment.stripePaymentIntentId)!.status = 'succeeded';
+      await payments.sweep();
+      expect(
+        await models.refunds.findOne({ paymentId: payment._id }).lean(),
+      ).toMatchObject({
+        amountMinorUnits: payment.amountMinorUnits,
+        status: RefundStatus.REFUNDED,
+      });
+      expect((await models.flightBookings.findById(bookingId))!.status).toBe(
+        BookingStatus.EXPIRED,
+      );
+    });
+
+    it('uses one Stripe intent/local payment when creation requests race', async () => {
+      const bookingId = await holdHotel(100);
+      await accept('hotel', bookingId);
+      const results = await Promise.all(
+        Array.from({ length: 8 }, () => pay('hotel', bookingId)),
+      );
+      expect(
+        results
+          .map((r) => r.status)
+          .every((status) => status === 201 || status === 409),
+      ).toBe(true);
+      expect(results.filter((r) => r.status === 201)).toHaveLength(1);
+      expect(await models.payments.countDocuments({ bookingId })).toBe(1);
+    });
+
+    it('refunds an extra captured payment when the succeeded-payment unique index rejects it, exactly once', async () => {
+      const bookingId = await holdHotel(110);
+      await accept('hotel', bookingId);
+      const first = await pay('hotel', bookingId, {
+        testPaymentMethod: 'pm_card_visa',
+      }).expect(201);
+      const initial = (await models.payments.findById(first.body.id))!;
+      const extraId = `pi_extra_${++sequence}`;
+      const extra = await models.payments.create({
+        bookingModel: initial.bookingModel,
+        bookingId: initial.bookingId,
+        stripePaymentIntentId: extraId,
+        amountMinorUnits: initial.amountMinorUnits,
+        currency: initial.currency,
+        status: PaymentStatus.PENDING,
+      });
+      const state: IntentState = {
+        id: extraId,
+        amount: extra.amountMinorUnits,
+        currency: 'egp',
+        status: 'succeeded',
+        clientSecret: null,
+      };
+      stripe.intents.set(extraId, state);
+      await Promise.all(
+        Array.from({ length: 4 }, () =>
+          payments.applyIntent(extra.toObject(), state),
+        ),
+      );
+      expect(
+        await models.refunds.countDocuments({ paymentId: extra._id }),
+      ).toBe(1);
+      expect(
+        (await models.refunds.findOne({ paymentId: extra._id }))!.status,
+      ).toBe(RefundStatus.REFUNDED);
+      expect(
+        stripe.refundCalls.filter((call) => call.paymentIntentId === extraId),
+      ).toHaveLength(1);
+      expect((await models.hotelBookings.findById(bookingId))!.status).toBe(
+        BookingStatus.CONFIRMED,
+      );
+      const shown = await call(
+        'get',
+        `/payments/${extra.id}`,
+        'traveler',
+      ).expect(200);
+      expect(shown.body).toMatchObject({
+        status: 'succeeded',
+        refund: {
+          status: 'refunded',
+          amountMinorUnits: extra.amountMinorUnits,
+        },
+      });
+      await call('post', `/payments/${extra.id}/retry`, 'traveler')
+        .send({})
+        .expect(409);
+    });
+
+    it('blocks deactivation before a hotel-local check-in across UTC midnight and permits it after checkout', async () => {
+      await addUser('tzTraveler', UserRole.TRAVELER);
+      const owner = (await models.users.findById(ids.tzTraveler))!;
+      await models.hotelBookings.create({
+        userId: owner._id,
+        hotelId,
+        checkInDate: '2031-01-15',
+        checkOutDate: '2031-01-16',
+        timeZone: 'America/Los_Angeles',
+        rooms: [
+          {
+            roomId: roomIds[0],
+            label: 'TZ room',
+            maxOccupancy: 2,
+            nightlyPriceMinorUnits: 1000,
+            adults: 1,
+            childAges: [],
+          },
+        ],
+        status: BookingStatus.CONFIRMED,
+        reference: `TZ-${++sequence}`,
+        holdExpiresAt: new Date(),
+        policyAcceptedAt: new Date(),
+        policy: {
+          checkInTime: '18:00',
+          checkOutTime: '11:00',
+          cancellationTiers: [],
+        },
+        currency: 'EGP',
+        totalMinorUnits: 1000,
+      });
+      const guard = app.get(AccountDeactivationService);
+      await expect(
+        guard.deactivateOwnAccount(
+          owner._id,
+          { currentPassword: PASSWORD, confirm: true },
+          new Date('2031-01-16T01:00:00Z'),
+        ),
+      ).rejects.toMatchObject({ status: 409 });
+      expect((await models.users.findById(owner._id))!.status).toBe(
+        UserStatus.ACTIVE,
+      );
+      expect(
+        await guard.hasUpcomingConfirmedBookings(
+          owner._id,
+          new Date('2031-01-16T19:00:00Z'),
+        ),
+      ).toBe(false);
+    });
+    it('reconciles locally cancelled provider payments and stops polling once Stripe confirms cancellation', async () => {
+      const bookingId = await holdFlight();
+      await accept('flight', bookingId);
+      const response = await pay('flight', bookingId).expect(201);
+      const booking = (await models.flightBookings.findById(bookingId))!;
+      const flight = (await models.flights.findById(
+        booking.segments[0].flightId,
+      ))!;
+      const moderator = await models.users.findOne({
+        role: UserRole.AIRLINE_MODERATOR,
+      });
+      moderator!.assignedProviderId = flight.airlineId;
+      await app.get(FlightManagementService).cancel(moderator!, flight.id);
+      const payment = (await models.payments.findById(response.body.id))!;
+      expect(payment.status).toBe(PaymentStatus.CANCELLED);
+      await payments.sweep();
+      expect(stripe.intents.get(payment.stripePaymentIntentId)!.status).toBe(
+        'canceled',
+      );
+      const calls = stripe.cancelCalls.filter(
+        (id) => id === payment.stripePaymentIntentId,
+      ).length;
+      await payments.sweep();
+      expect(
+        stripe.cancelCalls.filter((id) => id === payment.stripePaymentIntentId),
+      ).toHaveLength(calls);
     });
   });
 });

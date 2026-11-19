@@ -403,3 +403,22 @@ search from an itinerary. Tests stub the exchange-rate API. A real
 FXRatesAPI check was done through Swagger. The student reviewed the
 results before merging.
 ================================================
+
+================================================
+Date: 2026-11-19
+Student: Youssef Ashraf
+Tool: Codex
+Related requirements: PAY-01, PAY-03, FLT-06, ACC-12, GEN-11
+Prompt summary:
+Fix the three reproduced audit issues: Stripe cleanup after provider
+cancellation, extra successful payment refunds and hotel-timezone account
+deactivation checks.
+How the output was used:
+Codex added regression tests reproducing the failures, stable per-booking
+Stripe idempotency, reconciliation tracking for legacy cancelled payments,
+idempotent extra-charge refund recovery and a payment-specific refund response.
+The account guard now uses hotel-local checkout date/time and handles missing
+legacy metadata conservatively. Full local MongoDB tests and original audit
+probes verify the fixes with a fake Stripe gateway. Existing credentials and
+shared Atlas records were preserved.
+================================================

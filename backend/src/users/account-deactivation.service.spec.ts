@@ -20,7 +20,7 @@ describe('AccountDeactivationService (ACC-12)', () => {
   const userModel = { findById: jest.fn(), updateOne: jest.fn() };
   const flightBookingModel = { find: jest.fn() };
   const flightModel = { exists: jest.fn() };
-  const hotelBookingModel = { exists: jest.fn() };
+  const hotelBookingModel = { find: jest.fn() };
   const passwordHasher = { verify: jest.fn() };
   const sessionsService = { revokeAllForUser: jest.fn() };
   const service = new AccountDeactivationService(
@@ -40,7 +40,7 @@ describe('AccountDeactivationService (ACC-12)', () => {
     );
     userModel.updateOne.mockReturnValue(chain({ matchedCount: 1 }));
     passwordHasher.verify.mockResolvedValue(true);
-    hotelBookingModel.exists.mockResolvedValue(null);
+    hotelBookingModel.find.mockReturnValue(chain([]));
     flightBookingModel.find.mockReturnValue(chain([]));
   });
 
@@ -64,15 +64,22 @@ describe('AccountDeactivationService (ACC-12)', () => {
   });
 
   it('is blocked by a confirmed hotel stay that has not ended', async () => {
-    hotelBookingModel.exists.mockResolvedValue({ _id: 'h1' });
+    hotelBookingModel.find.mockReturnValue(
+      chain([
+        {
+          checkOutDate: '2026-11-20',
+          timeZone: 'Africa/Cairo',
+          policy: { checkOutTime: '11:00' },
+        },
+      ]),
+    );
 
     await expect(
       service.deactivateOwnAccount(userId, dto, now),
     ).rejects.toThrow(ConflictException);
-    expect(hotelBookingModel.exists).toHaveBeenCalledWith({
+    expect(hotelBookingModel.find).toHaveBeenCalledWith({
       userId,
       status: 'confirmed',
-      checkOutDate: { $gt: '2026-11-19' },
     });
     expect(userModel.updateOne).not.toHaveBeenCalled();
   });
@@ -102,5 +109,45 @@ describe('AccountDeactivationService (ACC-12)', () => {
     await service.deactivateOwnAccount(userId, dto, now);
 
     expect(userModel.updateOne).toHaveBeenCalled();
+  });
+  it.each([
+    [
+      'America/Los_Angeles',
+      '2031-01-16',
+      '11:00',
+      '2031-01-16T01:00:00Z',
+      true,
+    ],
+    [
+      'America/Los_Angeles',
+      '2031-01-16',
+      '11:00',
+      '2031-01-16T18:59:00Z',
+      true,
+    ],
+    [
+      'America/Los_Angeles',
+      '2031-01-16',
+      '11:00',
+      '2031-01-16T19:00:00Z',
+      false,
+    ],
+    ['Asia/Tokyo', '2031-01-16', '11:00', '2031-01-16T02:00:00Z', false],
+  ])(
+    'checks hotel-local checkout: %s at %s %s vs %s',
+    async (timeZone, checkOutDate, checkOutTime, instant, blocks) => {
+      hotelBookingModel.find.mockReturnValue(
+        chain([{ timeZone, checkOutDate, policy: { checkOutTime } }]),
+      );
+      expect(
+        await service.hasUpcomingConfirmedBookings(userId, new Date(instant)),
+      ).toBe(blocks);
+    },
+  );
+  it('blocks conservatively for legacy confirmed stays without checkout metadata', async () => {
+    hotelBookingModel.find.mockReturnValue(
+      chain([{ checkOutDate: '2031-01-16' }]),
+    );
+    expect(await service.hasUpcomingConfirmedBookings(userId, now)).toBe(true);
   });
 });
