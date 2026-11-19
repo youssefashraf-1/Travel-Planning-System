@@ -173,3 +173,21 @@ UsersService, added the /api prefix, request validation and Swagger at
 only against a separate test database set by MONGODB_TEST_URI. The student
 reviewed the changes and verification results before merging.
 ================================================
+
+================================================
+Date: 2026-11-19
+Student: MohamedShabrawy16003169
+Tool: Claude Code (Claude Opus 5.5)
+Related requirements: ACC-04, ACC-05
+Prompt summary:
+Implement Phase 3 checklist items 5 and 6: login and JWT authentication.
+How the output was used:
+Claude added POST /api/auth/login, which checks the password, returns the
+same error for unknown emails and wrong passwords, locks an account for 15
+minutes after five consecutive failures (counted atomically in MongoDB),
+resets the counter after success and refuses suspended or deactivated
+accounts. It issues a signed JWT in an HttpOnly, Secure, SameSite=Strict
+cookie and adds a reusable JwtAuthGuard and @CurrentUser() decorator.
+Unit and end-to-end tests cover these rules. The student reviewed the
+changes and verification results before merging.
+================================================

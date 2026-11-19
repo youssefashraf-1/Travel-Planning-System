@@ -4,6 +4,8 @@ import {
   ValidationPipe,
 } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import cookieParser from 'cookie-parser';
+import { ACCESS_TOKEN_COOKIE } from '../auth/auth.constants';
 
 export const API_PREFIX = 'api';
 export const API_DOCS_PATH = `${API_PREFIX}/docs`;
@@ -15,6 +17,9 @@ export const API_DOCS_PATH = `${API_PREFIX}/docs`;
  * server-controlled values such as a user's role.
  */
 export function configureApp(app: INestApplication): void {
+  // Reads the HttpOnly login cookie on incoming requests.
+  app.use(cookieParser());
+
   app.setGlobalPrefix(API_PREFIX, {
     // Keep the existing GET / health response outside the API prefix.
     exclude: [{ path: '/', method: RequestMethod.GET }],
@@ -38,6 +43,7 @@ export function setupSwagger(app: INestApplication): void {
         'from the official project workbook.',
     )
     .setVersion('0.0.1')
+    .addCookieAuth(ACCESS_TOKEN_COOKIE)
     .build();
 
   const document = SwaggerModule.createDocument(app, config);
