@@ -209,3 +209,20 @@ that every protected request renews. Unit and end-to-end tests cover
 expiry, rotation, logout and multiple browsers. The student reviewed the
 changes and verification results before merging.
 ================================================
+
+================================================
+Date: 2026-11-19
+Student: MohamedShabrawy16003169
+Tool: Claude Code (Claude Opus 5.5)
+Related requirements: ACC-09, ACC-11, ACC-19
+Prompt summary:
+Implement Phase 3 checklist items 10 and 11: the current-user endpoint and
+profile viewing and updating.
+How the output was used:
+Claude read ACC-09, ACC-11 and ACC-19 from the official workbook and added
+GET /api/auth/me, GET /api/users/me and PATCH /api/users/me. Profile edits
+cover name, phone and preferred currency, check the currency against the
+seeded list and save nothing unless every field is valid. Email, role and
+status cannot be changed. Unit and end-to-end tests cover these rules. The
+student reviewed the changes and verification results before merging.
+================================================

@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { forwardRef, Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { MongooseModule } from '@nestjs/mongoose';
 import { UsersModule } from '../users/users.module';
@@ -13,7 +13,7 @@ import { TokenService } from './token.service';
 @Module({
   // The JWT secret is passed per call by TokenService (see token.service.ts).
   imports: [
-    UsersModule,
+    forwardRef(() => UsersModule),
     JwtModule.register({}),
     MongooseModule.forFeature([{ name: Session.name, schema: SessionSchema }]),
   ],

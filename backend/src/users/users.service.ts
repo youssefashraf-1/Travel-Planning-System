@@ -1,6 +1,13 @@
-import { ConflictException, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
+import { Currency } from '../reference-data/schemas/currency.schema';
+import { UpdateProfileDto } from './dto/update-profile.dto';
 import { User, UserDocument, UserRole } from './schemas/user.schema';
 
 export interface CreateTravelerInput {
@@ -21,6 +28,8 @@ export function normalizeEmail(email: string): string {
 export class UsersService {
   constructor(
     @InjectModel(User.name) private readonly userModel: Model<User>,
+    @InjectModel(Currency.name)
+    private readonly currencyModel: Model<Currency>,
   ) {}
 
   /**
@@ -117,6 +126,61 @@ export class UsersService {
         { $set: { failedLoginAttempts: 0 }, $unset: { lockedUntil: 1 } },
       )
       .exec();
+  }
+
+  /**
+   * ACC-09: updates name, phone and preferred currency together. Every field
+   * is validated first (the DTO checks formats, this checks the currency
+   * against the seeded list), so nothing is saved if any field is invalid.
+   * null removes phone or currency.
+   */
+  async updateProfile(
+    userId: Types.ObjectId,
+    changes: UpdateProfileDto,
+  ): Promise<UserDocument> {
+    const set: Partial<Pick<User, 'name' | 'phone' | 'preferredCurrency'>> = {};
+    const unset: Record<string, 1> = {};
+
+    if (changes.name !== undefined) {
+      set.name = changes.name;
+    }
+    for (const field of ['phone', 'preferredCurrency'] as const) {
+      const value = changes[field];
+      if (value === null) {
+        unset[field] = 1;
+      } else if (value !== undefined) {
+        set[field] = value;
+      }
+    }
+
+    if (Object.keys(set).length === 0 && Object.keys(unset).length === 0) {
+      throw new BadRequestException(
+        'Provide at least one of name, phone or preferredCurrency.',
+      );
+    }
+
+    if (set.preferredCurrency) {
+      const supported = await this.currencyModel.exists({
+        _id: set.preferredCurrency,
+      });
+      if (!supported) {
+        throw new BadRequestException(
+          `preferredCurrency ${set.preferredCurrency} is not a supported currency`,
+        );
+      }
+    }
+
+    const updated = await this.userModel
+      .findByIdAndUpdate(
+        userId,
+        { $set: set, $unset: unset },
+        { new: true, runValidators: true },
+      )
+      .exec();
+    if (!updated) {
+      throw new NotFoundException('Account not found.');
+    }
+    return updated;
   }
 }
 

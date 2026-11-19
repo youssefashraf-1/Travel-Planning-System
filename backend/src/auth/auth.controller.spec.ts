@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
+import { JwtAuthGuard } from './guards/jwt-auth.guard';
 
 describe('AuthController', () => {
   let controller: AuthController;
@@ -15,7 +16,10 @@ describe('AuthController', () => {
     const module: TestingModule = await Test.createTestingModule({
       controllers: [AuthController],
       providers: [{ provide: AuthService, useValue: authService }],
-    }).compile();
+    })
+      .overrideGuard(JwtAuthGuard)
+      .useValue({ canActivate: () => true })
+      .compile();
 
     controller = module.get<AuthController>(AuthController);
   });
@@ -120,5 +124,22 @@ describe('AuthController', () => {
       'refresh_token',
       expect.objectContaining({ path: '/api/auth', httpOnly: true }),
     );
+  });
+
+  it('returns the signed-in user without secrets from /me', () => {
+    const user = {
+      _id: { toString: () => 'u1' },
+      name: 'Mona Hassan',
+      email: 'mona@example.com',
+      passwordHash: 'scrypt$secret',
+      role: 'traveler',
+      status: 'active',
+      mustChangePassword: false,
+    };
+
+    const result = controller.me(user as any);
+
+    expect(result).toMatchObject({ id: 'u1', email: 'mona@example.com' });
+    expect(result).not.toHaveProperty('passwordHash');
   });
 });

@@ -1,12 +1,14 @@
 import {
   Body,
   Controller,
+  Get,
   HttpCode,
   HttpStatus,
   Post,
   Req,
   Res,
   UnauthorizedException,
+  UseGuards,
 } from '@nestjs/common';
 import {
   ApiBadRequestResponse,
@@ -23,6 +25,7 @@ import {
 } from '@nestjs/swagger';
 import type { Request, Response } from 'express';
 import { UserResponseDto } from '../users/dto/user-response.dto';
+import type { UserDocument } from '../users/schemas/user.schema';
 import {
   ACCESS_TOKEN_COOKIE,
   accessTokenCookieOptions,
@@ -32,8 +35,10 @@ import {
   SESSION_EXPIRED_MESSAGE,
 } from './auth.constants';
 import { AuthResult, AuthService } from './auth.service';
+import { CurrentUser } from './decorators/current-user.decorator';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
+import { JwtAuthGuard } from './guards/jwt-auth.guard';
 
 function readCookie(request: Request, name: string): string | undefined {
   return (request.cookies as Record<string, string> | undefined)?.[name];
@@ -177,5 +182,23 @@ export class AuthController {
       refreshToken: readCookie(request, REFRESH_TOKEN_COOKIE),
     });
     clearAuthCookies(response);
+  }
+  @Get('me')
+  @UseGuards(JwtAuthGuard)
+  @ApiCookieAuth()
+  @ApiOperation({
+    summary: 'Get the signed-in account (ACC-04, ACC-19)',
+    description:
+      'The frontend calls this to learn who is logged in, using only the ' +
+      'HttpOnly cookies. It also counts as activity for the 30-minute ' +
+      'session.',
+  })
+  @ApiOkResponse({ type: UserResponseDto })
+  @ApiUnauthorizedResponse({
+    description: 'Not logged in, or the session has expired.',
+  })
+  @ApiForbiddenResponse({ description: 'The account is suspended.' })
+  me(@CurrentUser() user: UserDocument): UserResponseDto {
+    return UserResponseDto.fromUser(user);
   }
 }
