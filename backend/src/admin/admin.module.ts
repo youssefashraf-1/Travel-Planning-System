@@ -7,7 +7,6 @@ import {
 import { Airline, AirlineSchema } from '../airlines/schemas/airline.schema';
 import { AuthModule } from '../auth/auth.module';
 import { Hotel, HotelSchema } from '../hotels/schemas/hotel.schema';
-import { RolesGuard } from '../auth/guards/roles.guard';
 import {
   Notification,
   NotificationSchema,
@@ -29,6 +28,6 @@ import { AdminAccountsService } from './admin-accounts.service';
     ]),
   ],
   controllers: [AdminAccountsController],
-  providers: [AdminAccountsService, RolesGuard],
+  providers: [AdminAccountsService],
 })
 export class AdminModule {}
