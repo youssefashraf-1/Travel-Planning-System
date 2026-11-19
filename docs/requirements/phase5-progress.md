@@ -32,7 +32,49 @@ The upcoming hotel-stay guard currently compares checkout with a UTC date;
 it needs a hotel-time-zone boundary test when hotel booking is integrated.
 No account code or schemas were changed by this flight work.
 
+## Group 2: flight and cabin creation
+
+- Airline moderators create flights for their assigned airline only. Request
+  bodies cannot set airline, status or inventory counters. Airports must exist
+  in the reference airport collection. Identical airports, invalid dates, past
+  departures and arrival at/before departure in UTC return 400.
+- Local input fields: `departureLocalDateTime`, `arrivalLocalDateTime`, both
+  `YYYY-MM-DDTHH:mm` without an offset or Z suffix. Each airport's IANA time
+  zone is used independently. Creation returns UTC timestamps plus local times
+  and zones. Nonexistent and repeated daylight-saving times return 400 with an
+  explanation rather than choosing a time silently.
+- Flight number is normalized to uppercase without whitespace. The existing
+  unique index enforces airline + number + departure local date, including
+  concurrent requests. Duplicates return 409.
+- Assigned airline moderators add cabins using `POST /api/flights/:id/cabins`.
+  The fixed four classes are unique per flight, including concurrent creation.
+  Seats and price are positive safe integers; free bag count is nonnegative;
+  bag weight is positive. Held and booked counters start at zero; creation
+  returns remaining seats. Booking holds and seat changes belong to Phase 6.
+- `effectiveFlightStatus()` treats scheduled flights as departed at the exact
+  departure instant. Cabin writes check it immediately. `FlightStatusService`
+  persists scheduled-to-departed transitions at startup and every 30 seconds;
+  cancelled flights are preserved. Future search/edit/booking services must
+  also filter scheduled status AND `departureAt > now`, so persistence delay
+  cannot allow a departed flight to be used.
+- No existing schema, account code, dependencies or environment values changed.
+
+## Validation
+
+Build, lint and formatting pass. 174 unit tests and 86 end-to-end tests pass
+against disposable local MongoDB. API tests cover flight UTC conversion,
+invalid input, permissions, unknown records, concurrent duplicates, four cabin
+classes, inventory validation, inactive airlines and departure status.
+Unit tests cover winter/summer offsets, date rollover, leap days, fractional
+hour zones and DST gaps/overlaps (including half-hour transitions).
+
+A real browser Swagger smoke check on a separate disposable local database
+verified cookie login, flight creation (201), cabin creation (201) and repeat
+cabin rejection (409). No tests or seeding were run against shared Atlas.
+
 ## Next
 
-Group 2: flight/cabin creation and time conversion.
-Then search/details, then editing/cancellation, then moderator booking views.
+Group 3: flight search and details (FLT-11, FLT-12, FLT-15, FLT-17).
+Then editing/cancellation, then moderator booking views. Phase 5 is not yet
+complete. Cabin editing and reservation/hold management are not included in
+these two groups.
