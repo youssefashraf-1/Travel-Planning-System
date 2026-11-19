@@ -109,8 +109,73 @@ cabin rejection (409). No tests or seeding were run against shared Atlas.
   reverse-route options and Swagger schemas. Browser Swagger confirmed public
   search/details (200) and an inverted price range (400), without login.
 
-## Next
+## Groups 4 and 5: editing, cancellation and moderator views
 
-Group 4: flight/cabin editing and cancellation (FLT-05, FLT-06).
-Then moderator booking views (FLT-29). Phase 5 is not yet complete.
-Reservation/hold management is Phase 6 work.
+- PATCH `/api/flights/:id`: owning airline moderator only; scheduled future
+  flights only. Partial local-time/airport edits are validated together.
+  Airports cannot change after ANY booking, including pending/expired ones.
+  Local date is recalculated at the departure airport. Duplicate local-date
+  flight numbers return 409. Time changes create one in-app notification per
+  confirmed booking owner per change; submitting unchanged times does not.
+- PATCH `/api/flights/:id/cabins/:cabinId`: owning moderator, matching flight
+  and cabin, scheduled/future only. Updates fare, capacity and free baggage.
+  Class, bookedSeats and heldSeats are server-controlled. The capacity write
+  atomically requires new capacity >= booked + held. Booking fare snapshots
+  stay unchanged. Cabin creation now uses the same transaction fence.
+- POST `/api/flights/:id/cancel` requires `confirm: true`. One transaction
+  cancels the flight, cancels confirmed bookings as whole round trips,
+  expires pending bookings, releases all affected segments' actual seats
+  (infants count zero), cancels pending local payment records and notifies
+  booking owners. A failed inventory/payment precondition rolls everything
+  back. Competing cancellation calls cannot double-release seats or duplicate
+  notifications/refunds. A repeat completed cancellation returns 409.
+- A succeeded payment matching the full booking amount/currency is required
+  to queue a full refund. Existing partial refund records require explicit
+  reconciliation (409). Full refund records are pending, never falsely marked
+  refunded. **PAY-03 remains a Phase 9 integration dependency:** the dispatcher
+  must issue Stripe refunds using idempotency, update pending/refunded/failed
+  state and notify the owner. A pending record is not proof of a Stripe refund.
+  Phase 9 must also cancel pending Stripe intents and reject late success
+  webhooks from confirming expired/cancelled bookings; any late successful
+  charge must be refunded/reconciled. No Stripe calls are made here.
+- GET `/api/flights/:id/bookings`: only the owning moderator; confirmed and
+  cancelled bookings, optional status filter, 10 per page. Returns reference,
+  passenger names/types, cabin and seats for this segment, plus cabin inventory.
+  Other-provider segments, DOB, passport/ID and contact data are omitted.
+- GET `/api/flights/:id/passengers/export`: same authorization/filter, all
+  matching passenger rows as downloadable CSV (page does not limit exports).
+  Fields are quoted, quotes/newlines escaped, spreadsheet formula prefixes
+  neutralized. Empty results still include a header row.
+
+## Transaction contract for Phase 6
+
+Mutation services use MongoDB transactions; Atlas supports this deployment
+model. Full local e2e tests therefore need a replica set, not standalone MongoDB
+(see README). Flight edits/cancellation/cabin changes first conditionally write
+`__v` on the scheduled, future flight document, using it as a transaction fence.
+**Phase 6 booking and hold creation must also conditionally write every involved
+scheduled/future flight document inside the same transaction before changing
+inventory or inserting the booking**. Use a consistent id order for multiple
+flight documents. A read-only flight check is insufficient: without this
+contract, a simultaneous booking insert could race with airport edits or flight
+cancellation. Hold and booking state changes must stay atomic with counters.
+
+## Final validation and status
+
+Build, lint and formatting pass. 184 unit tests and 112 e2e tests run against a
+fresh, local single-member replica set. Added checks cover all management routes,
+401/403 by role/provider, invalid input, 404, booking fare snapshots, notified
+schedule edits, transaction rollback, round-trip seat release, concurrent
+cancellations, hold-versus-capacity races, infants, privacy and CSV safety.
+Browser Swagger verified edit, cabin update, booking list, CSV export and
+explicitly confirmed cancellation, plus rejection of confirm=false. The final
+cancellation smoke response correctly reported one pending refund.
+
+All Phase 5 endpoint groups are implemented. Do not mark FLT-06/PAY-03's full
+refund outcome 100% verified until Phase 9 Stripe processing is implemented
+and tested. Booking hold creation/expiry remains Phase 6; image upload/storage
+is the separate Phase 12 GEN-08 feature (airline profiles currently accept URLs).
+
+Next: Phase 6, flight booking and inventory holds, following the transaction
+contract above. Do not promote develop to main as a completed backend milestone
+until all remaining backend phases and their integration checks pass.
