@@ -45,7 +45,7 @@ import { DeleteBlogPostDto } from './dto/blog-post-requests.dto';
 })
 @ApiUnauthorizedResponse({ description: 'Log in first.' })
 @ApiForbiddenResponse({ description: 'Account cannot perform this action.' })
-@Controller('blog')
+@Controller()
 export class BlogCommunityController {
   constructor(private readonly community: BlogCommunityService) {}
 

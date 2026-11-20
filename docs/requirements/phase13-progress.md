@@ -2,8 +2,7 @@
 
 ## Status
 
-Task 1 (automated testing and fixes) is complete. Task 2 (documentation and final
-milestone review) remains. This report does not declare Milestone 1 finished.
+Task 1 (automated testing and fixes) and Task 2 (documentation and release review) are complete.
 
 ## Validation — 20 November 2026
 
@@ -71,11 +70,23 @@ MONGODB_TEST_URI='<disposable replica-set test URI>' npm run test:e2e -- --runIn
 Set `PHASE13_API_REPORT` to a local output file to capture the access matrix JSON.
 No real Stripe transaction or shared Atlas record was used by this verification.
 
-## Task 2 remains
+## Task 2: documentation and release review (done 20 November 2026)
 
-- Replace the starter README with project setup, demonstration and API guidance.
-- Document environment variables, seed commands, uploads and test configuration.
-- Check required endpoint documentation and prepare the Swagger demonstration.
-- Document the confirmation-body changes for API consumers.
-- Verify current files and Git history for environment/secret exposure and resolve
-  any findings; prepare final backend milestone evidence and release review.
+- **README:** rewritten with setup, every environment variable, seed commands, uploads, the Swagger login flow, a demonstration walkthrough, an API overview, conventions (errors, pagination, money, dates, lifecycle), the table of required confirmation bodies, testing and security. `backend/README.md` now points to it.
+- **Endpoint paths now follow the project description, section 8:**
+  - The blog is served at `/api/posts`, `/api/comments/:id` and `/api/authors/:id`.
+  - `GET /api/tags/:tag/posts` was added (BLG-08).
+  - `PATCH /api/admin/reports/:id` was added (GEN-10), next to `POST …/resolve`.
+  - The earlier `/api/blog/...` addresses still work through a small rewrite in `configure-app.ts`, so existing callers and tests are unaffected.
+- **Swagger:**
+  - Every operation now has a summary, including `GET /`.
+  - The Stripe webhook is documented. It is public, and the Stripe signature protects it.
+  - Optional search filters no longer carry example values, which Swagger's "Try it out" pre-fills and which silently filtered results: blog keyword and tag, hotel city, itinerary keyword and currency, admin booking and audit date ranges.
+  - `test/milestone-paths.e2e-spec.ts` checks all of this, and the access matrix in `docs/testing/phase13-api-boundaries.csv` was regenerated with the documented paths.
+- **Demo data:** `npm run seed:demo` adds 2 airlines, 30 flights (2–6 weeks ahead) and 3 hotels with rooms, for the Swagger demonstration. It is idempotent and creates no accounts.
+- **Secrets:** the whole Git history was scanned for Stripe keys, webhook secrets, MongoDB credentials and JWT secrets, and none were found. `.env` was never committed, `.env.example` holds only placeholders, and uploads are ignored by Git.
+- **Reference data:** identical to the official datasets (8 countries, cities, airports and attractions with the same identifiers).
+
+Known, non-blocking: running `tsc` over the test files reports 46 type-only issues in older test helpers. Jest does not type-check, so every test still runs and passes. The application build (`npm run build`) and type-aware lint are clean.
+
+Final verification: build, lint and formatting pass. 238 unit tests and 304 end-to-end tests pass.

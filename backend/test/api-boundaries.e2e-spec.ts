@@ -27,16 +27,19 @@ const PUBLIC = new Set([
   'get /api/hotels/{id}',
   'get /api/hotels/{id}/rooms/available',
   'get /api/hotels/{id}/reviews',
-  'get /api/blog/posts',
-  'get /api/blog/posts/search',
-  'get /api/blog/posts/{id}',
-  'get /api/blog/posts/{id}/comments',
-  'get /api/blog/authors/{id}',
+  'get /api/posts',
+  'get /api/posts/search',
+  'get /api/posts/{id}',
+  'get /api/posts/{id}/comments',
+  'get /api/tags/{tag}/posts',
+  'get /api/authors/{id}',
   'get /api/itineraries/public/search',
   'get /api/itineraries/public/{id}',
   'post /api/auth/register',
   'post /api/auth/login',
   'post /api/auth/logout',
+  // Called by Stripe; protected by its signature instead of a login.
+  'post /api/payments/webhook',
 ]);
 type Method = 'get' | 'post' | 'patch' | 'put' | 'delete';
 const METHODS: Method[] = ['get', 'post', 'patch', 'put', 'delete'];
@@ -209,7 +212,7 @@ describe('Phase 13 whole-API access boundaries', () => {
         .expect(404);
     }
   });
-  it('serves Swagger and verifies the excluded Stripe webhook still rejects unsigned requests', async () => {
+  it('serves Swagger and documents the Stripe webhook, which rejects unsigned requests', async () => {
     await request(app.getHttpServer()).get('/api/docs').expect(200);
     const json = (
       await request(app.getHttpServer()).get('/api/docs-json').expect(200)
@@ -217,7 +220,7 @@ describe('Phase 13 whole-API access boundaries', () => {
     expect(Object.keys(json.paths).sort()).toEqual(
       Object.keys(document.paths).sort(),
     );
-    expect(document.paths['/api/payments/webhook']).toBeUndefined();
+    expect(document.paths['/api/payments/webhook']).toBeDefined();
     await request(app.getHttpServer())
       .post('/api/payments/webhook')
       .send({ type: 'payment_intent.succeeded' })
