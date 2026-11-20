@@ -444,3 +444,26 @@ The progress document distinguishes completed core post functionality from
 remaining comment/search/author-page/moderation integration. No frontend
 or real team database records are added by this implementation's tests.
 ================================================
+
+================================================
+Date: 2026-11-20
+Requested commit identity: ahmedsalahh06
+Tool: Codex
+Related requirements: BLG-01 to BLG-10, BLG-12, ACC-12,
+GEN-03, GEN-05, GEN-07, GEN-09, GEN-10, GEN-13
+Prompt summary:
+Finalize Phase 11 after Group A, following the official workbook and the
+existing workflow of tested feature branches merged automatically to develop.
+How the output was used:
+Codex implemented chronological comments and owner edits/deletes, idempotent
+likes/unlikes, ranked literal keyword search, public author pages, one-report-
+per-user/item reporting for all four content types, administrator moderation
+and transactional audit records. Hidden/deactivated content rules and media
+cleanup integrate with the existing blog, hotel review and itinerary APIs.
+Transaction fences protect interactions from concurrent post deletion; schema
+character limits match request validation for Unicode text. Thirty-four new
+end-to-end cases cover permissions, visibility, pagination, concurrency,
+moderation rollback and cleanup. Full unit/e2e suites and Swagger checks passed.
+The optional BLG-13 attachment feature remains outside mandatory scope; no
+frontend pages or shared team database records were created by these tests.
+================================================

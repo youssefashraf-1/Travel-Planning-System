@@ -60,6 +60,18 @@ export class UpdateBlogPostDto extends PartialType(CreateBlogPostDto, {
 }) {}
 
 export class PublishedPostsQueryDto extends PageQueryDto {
+  @ApiPropertyOptional({
+    example: 'cairo',
+    maxLength: 100,
+    description: 'Literal keyword in title, tags or author name.',
+  })
+  @ValidateIf((_object, value: unknown) => value !== undefined)
+  @Transform(trim)
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(100)
+  keyword?: string;
+
   @ApiPropertyOptional({ example: 'egypt', maxLength: 30 })
   @ValidateIf((_object, value: unknown) => value !== undefined)
   @Transform(({ value }: { value: unknown }) =>

@@ -42,7 +42,10 @@ export class BlogPost {
         required: true,
         trim: true,
         lowercase: true,
-        maxlength: 30,
+        validate: {
+          validator: (tag: string) => Array.from(tag).length <= 30,
+          message: 'Tags must be at most 30 characters.',
+        },
       },
     ],
     default: [],

@@ -1,6 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { PageInfoDto } from '../../common/pagination';
 import { BlogPostStatus } from '../schemas/blog-post.schema';
+import { BlogCommentListDto } from './blog-community.dto';
 
 export class BlogAuthorDto {
   @ApiProperty() id: string;
@@ -25,12 +26,16 @@ export class BlogPostSummaryDto {
   @ApiProperty({ type: [BlogImageDto] }) images: BlogImageDto[];
   @ApiProperty() likeCount: number;
   @ApiProperty() commentCount: number;
+  @ApiProperty() excerpt: string;
+  @ApiProperty({ description: 'Likes plus visible comments.' })
+  interactionScore: number;
   @ApiProperty({ description: 'True when hidden by moderation.' })
   hidden: boolean;
 }
 
 export class BlogPostDetailsDto extends BlogPostSummaryDto {
   @ApiProperty({ description: 'Text content, not trusted HTML.' }) body: string;
+  @ApiProperty({ type: BlogCommentListDto }) comments: BlogCommentListDto;
 }
 
 export class BlogPostListDto extends PageInfoDto {

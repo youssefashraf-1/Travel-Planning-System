@@ -8,6 +8,15 @@ import { BlogPostsService } from './blog-posts.service';
 import { BlogPost, BlogPostSchema } from './schemas/blog-post.schema';
 import { Comment, CommentSchema } from './schemas/comment.schema';
 import { Like, LikeSchema } from './schemas/like.schema';
+import {
+  Itinerary,
+  ItinerarySchema,
+} from '../itineraries/schemas/itinerary.schema';
+import { BlogVisibilityService } from './blog-visibility.service';
+import { BlogCommunityService } from './blog-community.service';
+import { BlogCommunityController } from './blog-community.controller';
+import { BlogAuthorsService } from './blog-authors.service';
+import { BlogAuthorsController } from './blog-authors.controller';
 
 @Module({
   imports: [
@@ -17,9 +26,20 @@ import { Like, LikeSchema } from './schemas/like.schema';
       { name: BlogPost.name, schema: BlogPostSchema },
       { name: Comment.name, schema: CommentSchema },
       { name: Like.name, schema: LikeSchema },
+      { name: Itinerary.name, schema: ItinerarySchema },
     ]),
   ],
-  controllers: [BlogPostsController],
-  providers: [BlogPostsService, ImageUploadsService],
+  controllers: [
+    BlogPostsController,
+    BlogCommunityController,
+    BlogAuthorsController,
+  ],
+  providers: [
+    BlogPostsService,
+    ImageUploadsService,
+    BlogVisibilityService,
+    BlogCommunityService,
+    BlogAuthorsService,
+  ],
 })
 export class BlogModule {}

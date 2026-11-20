@@ -15,7 +15,14 @@ export class Comment {
   @Prop({ type: MongooseSchema.Types.ObjectId, ref: User.name, required: true })
   authorId: Types.ObjectId;
 
-  @Prop({ required: true, trim: true, maxlength: 500 })
+  @Prop({
+    required: true,
+    trim: true,
+    validate: {
+      validator: (body: string) => Array.from(body).length <= 500,
+      message: 'Comments must be at most 500 characters.',
+    },
+  })
   body: string;
 
   @Prop({ type: Date })
