@@ -32,6 +32,10 @@ class PassengerSegment {
 
   @Prop({ required: true, default: 0, min: 0, validate: Number.isSafeInteger })
   baggageFeeMinorUnits: number;
+
+  /** FLT-28 (optional): the chosen seat, for example 21C. */
+  @Prop({ type: String, uppercase: true })
+  seat?: string;
 }
 
 const PassengerSegmentSchema = SchemaFactory.createForClass(PassengerSegment);

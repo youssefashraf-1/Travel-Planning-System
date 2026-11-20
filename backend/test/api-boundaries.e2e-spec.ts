@@ -23,6 +23,8 @@ const PUBLIC = new Set([
   'get /api/airlines/{id}',
   'get /api/flights/search',
   'get /api/flights/{id}',
+  // Optional seat map (FLT-28), public like the flight details.
+  'get /api/flights/{id}/seats',
   'get /api/hotels/search',
   'get /api/hotels/{id}',
   'get /api/hotels/{id}/rooms/available',

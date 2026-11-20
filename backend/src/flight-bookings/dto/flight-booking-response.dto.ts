@@ -50,6 +50,11 @@ export class PassengerSegmentPriceDto {
   @ApiProperty({ example: 450000 }) fareMinorUnits: number;
   @ApiProperty({ type: [Number], example: [20] }) extraBagWeightsKg: number[];
   @ApiProperty({ example: 50000 }) baggageFeeMinorUnits: number;
+  @ApiPropertyOptional({
+    example: '21C',
+    description: 'The chosen seat, if one was picked (FLT-28).',
+  })
+  seat?: string;
 }
 
 export class BookedPassengerDto {
@@ -183,4 +188,45 @@ export class CancelledFlightBookingDto {
       'payment service. none: no refund is due.',
   })
   refundStatus: 'pending' | 'none';
+}
+
+/** FLT-27 (optional): the result or quote of a flight change. */
+export class ChangeFlightResultDto {
+  @ApiProperty({ description: 'true when previewOnly was sent.' })
+  preview: boolean;
+  @ApiPropertyOptional({ description: 'The change id; pay it when pending.' })
+  changeId?: string;
+  @ApiProperty({ enum: ['quote', 'confirmed', 'pending_payment'] })
+  status: 'quote' | 'confirmed' | 'pending_payment';
+  @ApiProperty({ enum: ['outbound', 'return'] }) leg: 'outbound' | 'return';
+  @ApiProperty() fromFlightId: string;
+  @ApiProperty() toFlightId: string;
+  @ApiProperty({ example: 900000 }) oldSegmentTotalMinorUnits: number;
+  @ApiProperty({ example: 1000000 }) newSegmentTotalMinorUnits: number;
+  @ApiProperty({
+    example: 100000,
+    description: 'New minus old; negative when the new flight is cheaper.',
+  })
+  fareDifferenceMinorUnits: number;
+  @ApiProperty({ example: 100000 }) amountDueMinorUnits: number;
+  @ApiProperty({ example: 0 }) refundMinorUnits: number;
+  @ApiProperty({ example: 'EGP' }) currency: string;
+  @ApiPropertyOptional({ description: 'Pay before this time.' })
+  holdExpiresAt?: Date;
+  @ApiProperty() nextStep: string;
+  @ApiProperty({ type: () => FlightBookingDto }) booking: FlightBookingDto;
+}
+
+export class SeatDto {
+  @ApiProperty({ example: '21C' }) seat: string;
+  @ApiProperty() available: boolean;
+}
+
+/** FLT-28 (optional): one cabin's seats. */
+export class SeatMapDto {
+  @ApiProperty() flightId: string;
+  @ApiProperty({ example: 'MS777' }) flightNumber: string;
+  @ApiProperty({ enum: CabinClass }) cabinClass: CabinClass;
+  @ApiProperty({ type: [SeatDto] }) seats: SeatDto[];
+  @ApiProperty({ example: 118 }) availableCount: number;
 }

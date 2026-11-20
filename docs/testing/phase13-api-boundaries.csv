@@ -56,7 +56,9 @@ POST,/api/flight-bookings,401
 POST,/api/flight-bookings/hold,401
 GET,/api/flight-bookings/{id},401
 POST,/api/flight-bookings/{id}/cancel,401
+PATCH,/api/flight-bookings/{id}/change-flight,401
 GET,/api/flight-bookings/{id}/e-ticket,401
+PATCH,/api/flight-bookings/{id}/seat,401
 POST,/api/flights,401
 GET,/api/flights/search,400
 GET,/api/flights/{id},404
@@ -66,6 +68,7 @@ POST,/api/flights/{id}/cabins,401
 PATCH,/api/flights/{id}/cabins/{cabinId},401
 POST,/api/flights/{id}/cancel,401
 GET,/api/flights/{id}/passengers/export,401
+GET,/api/flights/{id}/seats,400
 GET,/api/hotel-bookings,401
 POST,/api/hotel-bookings,401
 GET,/api/hotel-bookings/{id},401

@@ -16,6 +16,8 @@ import { TEST_PAYMENT_METHOD } from '../stripe-gateway';
 export enum BookingType {
   FLIGHT = 'flight',
   HOTEL = 'hotel',
+  /** FLT-27 (optional): the fare difference of a flight change. */
+  FLIGHT_CHANGE = 'flight_change',
 }
 
 const testMethod = {
