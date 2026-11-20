@@ -22,6 +22,10 @@ import {
   ImageUploadsService,
   UploadedImage,
 } from '../common/uploads/image-uploads.service';
+import {
+  Itinerary,
+  ItineraryVisibility,
+} from '../itineraries/schemas/itinerary.schema';
 import { User, UserDocument, UserStatus } from '../users/schemas/user.schema';
 import {
   CreateBlogPostDto,
@@ -55,6 +59,8 @@ export class BlogPostsService {
     @InjectModel(Comment.name) private readonly comments: Model<Comment>,
     @InjectModel(Like.name) private readonly likes: Model<Like>,
     @InjectModel(User.name) private readonly users: Model<User>,
+    @InjectModel(Itinerary.name)
+    private readonly itineraries: Model<Itinerary>,
     private readonly uploads: ImageUploadsService,
     private readonly community: BlogCommunityService,
   ) {}
@@ -210,7 +216,7 @@ export class BlogPostsService {
           .exec()
       : null;
     if (!post || !author) throw new NotFoundException(NOT_FOUND);
-    return this.details(post, author, page);
+    return this.details(post, author, page, true);
   }
 
   async listMine(
@@ -320,6 +326,39 @@ export class BlogPostsService {
     return this.details(post, user);
   }
 
+  /**
+   * BLG-13 (optional): attaches one of the author's public, visible
+   * itineraries to the post, or removes it with null.
+   */
+  async attachItinerary(
+    user: UserDocument,
+    id: string,
+    itineraryId: string | null,
+  ): Promise<BlogPostDetailsDto> {
+    const post = await this.own(user, id);
+    if (itineraryId === null) {
+      post.itineraryId = undefined;
+    } else {
+      const itinerary = await this.itineraries
+        .findOne({
+          _id: itineraryId,
+          ownerId: user._id,
+          visibility: ItineraryVisibility.PUBLIC,
+          hiddenAt: null,
+        })
+        .select('_id')
+        .lean()
+        .exec();
+      if (!itinerary)
+        throw new BadRequestException(
+          'Attach one of your own public itineraries (make it public first).',
+        );
+      post.itineraryId = itinerary._id;
+    }
+    await this.save(post);
+    return this.details(post, user);
+  }
+
   private async own(user: UserDocument, id: string): Promise<PostDocument> {
     const post = Types.ObjectId.isValid(id)
       ? await this.posts.findOne({ _id: id, authorId: user._id }).exec()
@@ -345,12 +384,37 @@ export class BlogPostsService {
     post: PostDocument,
     author: Author,
     page = 1,
+    publicView = false,
   ): Promise<BlogPostDetailsDto> {
     const stored = post.toObject<StoredPost>();
     return Object.assign(await this.summary(stored, author), {
       body: stored.body,
       comments: await this.community.visibleComments(post._id, page),
+      itinerary: await this.attachedItinerary(stored, publicView),
     });
+  }
+
+  /** Readers only see an attached itinerary while it stays public. */
+  private async attachedItinerary(post: StoredPost, publicView: boolean) {
+    if (!post.itineraryId) return undefined;
+    const itinerary = await this.itineraries
+      .findOne({
+        _id: post.itineraryId,
+        hiddenAt: null,
+        ...(publicView ? { visibility: ItineraryVisibility.PUBLIC } : {}),
+      })
+      .select('title startDate days visibility')
+      .lean()
+      .exec();
+    return itinerary
+      ? {
+          id: itinerary._id.toString(),
+          title: itinerary.title,
+          startDate: itinerary.startDate,
+          dayCount: itinerary.days.length,
+          visibility: itinerary.visibility,
+        }
+      : undefined;
   }
 
   private async summary(

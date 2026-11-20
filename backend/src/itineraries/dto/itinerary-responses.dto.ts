@@ -37,6 +37,23 @@ export class TransportViewDto extends MoneyViewDto {
   @ApiProperty({ example: 'Paris' }) toCityName: string;
 }
 
+/** ITN-27 (optional): a booking linked to a day. */
+export class LinkedBookingViewDto {
+  @ApiProperty({ description: 'The link id, for unlinking.' }) id: string;
+  @ApiProperty({ enum: ['flight', 'hotel'] }) bookingType: 'flight' | 'hotel';
+  @ApiProperty() bookingId: string;
+  @ApiPropertyOptional({ example: 'K7Q2MX' }) reference?: string;
+  @ApiProperty({ example: 'confirmed' }) status: string;
+  @ApiProperty({ example: 'Flight NA101' }) title: string;
+  @ApiProperty({ example: 650000 }) amountMinorUnits: number;
+  @ApiProperty({ example: 'EGP' }) currency: string;
+  @ApiProperty({
+    description:
+      'True while the booking is confirmed or completed; cancelled bookings stop counting.',
+  })
+  countsInBudget: boolean;
+}
+
 export class DayViewDto {
   @ApiProperty() id: string;
   @ApiProperty({ example: 1, description: 'Days are numbered from 1.' })
@@ -53,6 +70,8 @@ export class DayViewDto {
   @ApiProperty({ type: [ActivityViewDto] }) activities: ActivityViewDto[];
   @ApiProperty({ type: [BudgetViewDto] }) budgetEntries: BudgetViewDto[];
   @ApiProperty({ type: [TransportViewDto] }) transportCosts: TransportViewDto[];
+  @ApiProperty({ type: [LinkedBookingViewDto] })
+  linkedBookings: LinkedBookingViewDto[];
 }
 
 /** ITN-09: consecutive days in the same city. */

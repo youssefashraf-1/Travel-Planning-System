@@ -64,6 +64,10 @@ export class BlogPost {
 
   @Prop({ type: Date })
   hiddenAt?: Date;
+
+  /** BLG-13 (optional): one of the author's public itineraries. */
+  @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'Itinerary' })
+  itineraryId?: Types.ObjectId;
 }
 
 export const BlogPostSchema = SchemaFactory.createForClass(BlogPost);

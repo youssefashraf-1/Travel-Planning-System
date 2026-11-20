@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -147,6 +148,12 @@ export class FlightBookingsService {
     dto: FlightBookingRequestDto,
     now = new Date(),
   ): Promise<FlightBookingDto> {
+    // ACC-02: travelers verify their email address before booking.
+    if (user.emailVerified === false)
+      throw new ForbiddenException(
+        'Verify your email address before booking. Use the link we emailed you, or request a new one with POST /api/auth/resend-verification.',
+      );
+
     await this.releaseStaleHolds(dto, now);
     const bookingId = await this.connection.transaction(async (session) => {
       const plan = await this.plan(dto, now, session);

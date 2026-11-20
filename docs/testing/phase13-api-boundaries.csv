@@ -7,6 +7,7 @@ DELETE,/api/activities/{id}/images/{imageId},401
 GET,/api/admin/accounts,401
 PATCH,/api/admin/accounts/{id}/reactivate,401
 PATCH,/api/admin/accounts/{id}/suspend,401
+GET,/api/admin/analytics,401
 GET,/api/admin/audit-logs,401
 GET,/api/admin/bookings,401
 DELETE,/api/admin/content/{type}/{id},401
@@ -29,11 +30,15 @@ DELETE,/api/airlines/{id}/logo,401
 PUT,/api/airlines/{id}/logo,401
 GET,/api/airports,200
 PATCH,/api/auth/change-password,401
+POST,/api/auth/forgot-password,400
 POST,/api/auth/login,400
 POST,/api/auth/logout,204
 GET,/api/auth/me,401
 POST,/api/auth/refresh,401
 POST,/api/auth/register,400
+POST,/api/auth/resend-verification,401
+POST,/api/auth/reset-password,400
+GET,/api/auth/verify-email,400
 GET,/api/authors/{id},404
 POST,/api/bookings/{type}/{id}/accept-policies,401
 GET,/api/bookings/{type}/{id}/policies,401
@@ -43,6 +48,9 @@ GET,/api/comments/mine,401
 DELETE,/api/comments/{id},401
 PATCH,/api/comments/{id},401
 GET,/api/content/mine/{type}/{id},401
+GET,/api/favourites,401
+POST,/api/favourites,401
+DELETE,/api/favourites/{type}/{id},401
 GET,/api/flight-bookings,401
 POST,/api/flight-bookings,401
 POST,/api/flight-bookings/hold,401
@@ -87,6 +95,8 @@ GET,/api/itineraries/public/{id},404
 DELETE,/api/itineraries/{id},401
 GET,/api/itineraries/{id},401
 PATCH,/api/itineraries/{id},401
+POST,/api/itineraries/{id}/bookings,401
+DELETE,/api/itineraries/{id}/bookings/{linkId},401
 GET,/api/itineraries/{id}/budget-summary,401
 POST,/api/itineraries/{id}/clone,401
 POST,/api/itineraries/{id}/days,401
@@ -97,6 +107,7 @@ POST,/api/itineraries/{id}/days/{dayId}/activities,401
 POST,/api/itineraries/{id}/days/{dayId}/budgets,401
 GET,/api/itineraries/{id}/flights,401
 GET,/api/itineraries/{id}/hotels,401
+GET,/api/itineraries/{id}/pdf,401
 POST,/api/itineraries/{id}/transport-costs,401
 GET,/api/notifications,401
 PATCH,/api/notifications/read-all,401
@@ -118,12 +129,14 @@ GET,/api/posts/{id}/comments,404
 POST,/api/posts/{id}/comments,401
 POST,/api/posts/{id}/images,401
 DELETE,/api/posts/{id}/images/{imageId},401
+PATCH,/api/posts/{id}/itinerary,401
 DELETE,/api/posts/{id}/like,401
 POST,/api/posts/{id}/like,401
 GET,/api/refunds/{id},401
 POST,/api/reports,401
 DELETE,/api/reviews/{id},401
 PATCH,/api/reviews/{id},401
+POST,/api/reviews/{id}/reply,401
 GET,/api/tags/{tag}/posts,200
 DELETE,/api/transport-costs/{id},401
 PATCH,/api/transport-costs/{id},401

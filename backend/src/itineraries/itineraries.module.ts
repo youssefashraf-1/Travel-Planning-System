@@ -1,6 +1,16 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { Airport, AirportSchema } from '../airports/schemas/airport.schema';
+import {
+  FlightBooking,
+  FlightBookingSchema,
+} from '../flight-bookings/schemas/flight-booking.schema';
+import { Flight, FlightSchema } from '../flights/schemas/flight.schema';
+import {
+  HotelBooking,
+  HotelBookingSchema,
+} from '../hotel-bookings/schemas/hotel-booking.schema';
+import { Hotel, HotelSchema } from '../hotels/schemas/hotel.schema';
 import { AuthModule } from '../auth/auth.module';
 import { ImageUploadsService } from '../common/uploads/image-uploads.service';
 import { ExchangeRatesModule } from '../exchange-rates/exchange-rates.module';
@@ -36,6 +46,10 @@ import { Itinerary, ItinerarySchema } from './schemas/itinerary.schema';
       { name: Country.name, schema: CountrySchema },
       { name: User.name, schema: UserSchema },
       { name: Airport.name, schema: AirportSchema },
+      { name: FlightBooking.name, schema: FlightBookingSchema },
+      { name: HotelBooking.name, schema: HotelBookingSchema },
+      { name: Flight.name, schema: FlightSchema },
+      { name: Hotel.name, schema: HotelSchema },
     ]),
   ],
   // Public routes first, so /itineraries/public/... is not read as an id.

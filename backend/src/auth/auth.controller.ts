@@ -6,6 +6,7 @@ import {
   Patch,
   HttpStatus,
   Post,
+  Query,
   Req,
   Res,
   UnauthorizedException,
@@ -36,6 +37,11 @@ import { clearAuthCookies, readCookie, setAuthCookies } from './auth-cookies';
 import { AuthService } from './auth.service';
 import { AllowPendingPasswordChange } from './decorators/allow-pending-password-change.decorator';
 import { CurrentUser } from './decorators/current-user.decorator';
+import {
+  ForgotPasswordDto,
+  ResetPasswordDto,
+  VerifyEmailQueryDto,
+} from './dto/account-recovery.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
@@ -205,5 +211,75 @@ export class AuthController {
       request.sessionId,
       dto,
     );
+  }
+  @Get('verify-email')
+  @ApiOperation({
+    summary: 'Verify my email address (ACC-02, optional)',
+    description:
+      'Opened from the emailed link. Each link works once and expires ' +
+      'after 24 hours. Travelers can book once verified.',
+  })
+  @ApiOkResponse({ description: '{ verified: true }' })
+  @ApiBadRequestResponse({ description: 'Invalid, used or expired link.' })
+  async verifyEmail(
+    @Query() query: VerifyEmailQueryDto,
+  ): Promise<{ verified: true }> {
+    await this.authService.verifyEmail(query.token);
+    return { verified: true };
+  }
+
+  @Post('resend-verification')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @UseGuards(JwtAuthGuard)
+  @ApiCookieAuth()
+  @ApiOperation({
+    summary: 'Email me a new verification link (ACC-02, optional)',
+    description: 'Earlier links stop working.',
+  })
+  @ApiNoContentResponse({ description: 'Sent.' })
+  @ApiConflictResponse({ description: 'Already verified.' })
+  @ApiUnauthorizedResponse({ description: 'Not logged in.' })
+  async resendVerification(@CurrentUser() user: UserDocument): Promise<void> {
+    await this.authService.resendVerification(user._id);
+  }
+
+  @Post('forgot-password')
+  @HttpCode(HttpStatus.ACCEPTED)
+  @ApiOperation({
+    summary: 'Email me a password reset link (ACC-07, optional)',
+    description:
+      'Always answers the same way, so it never reveals whether an ' +
+      'account exists. The link expires after 30 minutes, works once, and ' +
+      'a newer request cancels older links.',
+  })
+  @ApiResponse({
+    status: HttpStatus.ACCEPTED,
+    description: 'If the email belongs to an active account, a link was sent.',
+  })
+  @ApiBadRequestResponse({ description: 'Not a valid email address.' })
+  async forgotPassword(
+    @Body() dto: ForgotPasswordDto,
+  ): Promise<{ message: string }> {
+    await this.authService.forgotPassword(dto);
+    return {
+      message:
+        'If an account exists for this email, a reset link has been sent.',
+    };
+  }
+
+  @Post('reset-password')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({
+    summary: 'Set a new password from a reset link (ACC-07, optional)',
+    description:
+      'Needs the token from the link and a new password that meets the ' +
+      'rules. All sessions of the account end.',
+  })
+  @ApiNoContentResponse({ description: 'Password changed; log in again.' })
+  @ApiBadRequestResponse({
+    description: 'Invalid, used or expired link, or a weak password.',
+  })
+  async resetPassword(@Body() dto: ResetPasswordDto): Promise<void> {
+    await this.authService.resetPassword(dto);
   }
 }

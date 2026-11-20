@@ -16,7 +16,11 @@ import { AdminAccountsController } from './admin-accounts.controller';
 import { AdminAccountsService } from './admin-accounts.service';
 import { AdminProvidersService } from './admin-providers.service';
 import { AdminBookingsService } from './admin-bookings.service';
+import { AdminAnalyticsController } from './admin-analytics.controller';
+import { AdminAnalyticsService } from './admin-analytics.service';
 import { AdminAuditService } from './admin-audit.service';
+import { Payment, PaymentSchema } from '../payments/schemas/payment.schema';
+import { Refund, RefundSchema } from '../payments/schemas/refund.schema';
 import { AdminOperationsController } from './admin-operations.controller';
 import {
   FlightBooking,
@@ -41,14 +45,21 @@ import { Flight, FlightSchema } from '../flights/schemas/flight.schema';
       { name: FlightBooking.name, schema: FlightBookingSchema },
       { name: HotelBooking.name, schema: HotelBookingSchema },
       { name: Flight.name, schema: FlightSchema },
+      { name: Payment.name, schema: PaymentSchema },
+      { name: Refund.name, schema: RefundSchema },
     ]),
   ],
-  controllers: [AdminAccountsController, AdminOperationsController],
+  controllers: [
+    AdminAccountsController,
+    AdminOperationsController,
+    AdminAnalyticsController,
+  ],
   providers: [
     AdminAccountsService,
     AdminProvidersService,
     AdminBookingsService,
     AdminAuditService,
+    AdminAnalyticsService,
   ],
 })
 export class AdminModule {}

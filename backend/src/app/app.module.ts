@@ -15,6 +15,7 @@ import { FlightBookingsModule } from '../flight-bookings/flight-bookings.module'
 import { FlightsModule } from '../flights/flights.module';
 import { HotelBookingsModule } from '../hotel-bookings/hotel-bookings.module';
 import { HotelsModule } from '../hotels/hotels.module';
+import { FavouritesModule } from '../favourites/favourites.module';
 import { ItinerariesModule } from '../itineraries/itineraries.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { PaymentsModule } from '../payments/payments.module';
@@ -61,6 +62,7 @@ export const { ObserveModule, ObserveInstrument } = createObserveModule();
     ReviewsModule,
     PaymentsModule,
     ItinerariesModule,
+    FavouritesModule,
     ExchangeRatesModule,
     BlogModule,
     NotificationsModule,

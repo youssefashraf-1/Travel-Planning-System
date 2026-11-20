@@ -38,6 +38,10 @@ const PUBLIC = new Set([
   'post /api/auth/register',
   'post /api/auth/login',
   'post /api/auth/logout',
+  // Optional account recovery (ACC-02, ACC-07): links arrive by email.
+  'get /api/auth/verify-email',
+  'post /api/auth/forgot-password',
+  'post /api/auth/reset-password',
   // Called by Stripe; protected by its signature instead of a login.
   'post /api/payments/webhook',
 ]);

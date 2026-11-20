@@ -18,6 +18,10 @@ import {
   UploadedImage,
 } from '../common/uploads/image-uploads.service';
 import { ExchangeRatesService } from '../exchange-rates/exchange-rates.service';
+import { BookingStatus } from '../common/booking-status';
+import { FlightBooking } from '../flight-bookings/schemas/flight-booking.schema';
+import { Flight } from '../flights/schemas/flight.schema';
+import { HotelBooking } from '../hotel-bookings/schemas/hotel-booking.schema';
 import { definedFields } from '../hotels/rooms.service';
 import { City } from '../reference-data/schemas/city.schema';
 import { Country } from '../reference-data/schemas/country.schema';
@@ -28,6 +32,7 @@ import {
   CreateDayDto,
   CreateItineraryDto,
   CreateTransportCostDto,
+  LinkBookingDto,
   MAX_DAYS,
   ReorderDaysDto,
   UpdateActivityDto,
@@ -40,10 +45,14 @@ import {
   ItineraryDetailsDto,
   ItineraryListDto,
 } from './dto/itinerary-responses.dto';
-import { ItineraryPresenter, StoredItinerary } from './itinerary-presenter';
+import {
+  dayDate,
+  ItineraryPresenter,
+  StoredItinerary,
+} from './itinerary-presenter';
 import { Activity } from './schemas/activity.schema';
 import { BudgetEntry } from './schemas/budget-entry.schema';
-import { ItineraryDay } from './schemas/itinerary-day.schema';
+import { ItineraryDay, LinkedBooking } from './schemas/itinerary-day.schema';
 import { Itinerary } from './schemas/itinerary.schema';
 import { TransportCost } from './schemas/transport-cost.schema';
 
@@ -51,11 +60,15 @@ type ItineraryDoc = HydratedDocument<Itinerary>;
 type Sub<T> = Types.Subdocument<Types.ObjectId> & T & { _id: Types.ObjectId };
 /** A day as a subdocument, with its lists as document arrays. */
 type DayDoc = Sub<
-  Omit<ItineraryDay, 'activities' | 'budgetEntries' | 'transportCosts'>
+  Omit<
+    ItineraryDay,
+    'activities' | 'budgetEntries' | 'transportCosts' | 'linkedBookings'
+  >
 > & {
   activities: Types.DocumentArray<Sub<Activity>>;
   budgetEntries: Types.DocumentArray<Sub<BudgetEntry>>;
   transportCosts: Types.DocumentArray<Sub<TransportCost>>;
+  linkedBookings: Types.DocumentArray<Sub<LinkedBooking>>;
 };
 
 function daysOf(itinerary: ItineraryDoc): Types.DocumentArray<DayDoc> {
@@ -80,6 +93,11 @@ export class ItinerariesService {
     private readonly presenter: ItineraryPresenter,
     private readonly exchangeRates: ExchangeRatesService,
     private readonly uploads: ImageUploadsService,
+    @InjectModel(FlightBooking.name)
+    private readonly flightBookings: Model<FlightBooking>,
+    @InjectModel(HotelBooking.name)
+    private readonly hotelBookings: Model<HotelBooking>,
+    @InjectModel(Flight.name) private readonly flights: Model<Flight>,
   ) {}
 
   /** ITN-01: private by default. */
@@ -181,6 +199,7 @@ export class ItinerariesService {
       activities: [],
       budgetEntries: [],
       transportCosts: [],
+      linkedBookings: [],
     });
     return this.save(itinerary);
   }
@@ -452,6 +471,95 @@ export class ItinerariesService {
     );
     item.deleteOne();
     await this.save(itinerary);
+  }
+
+  /**
+   * ITN-27 (optional): links one of the owner's confirmed or completed
+   * bookings to a day, by default the day of the flight's departure or the
+   * hotel's check-in. Its total then feeds the budget.
+   */
+  async linkBooking(
+    user: UserDocument,
+    id: string,
+    dto: LinkBookingDto,
+  ): Promise<ItineraryDetailsDto> {
+    const itinerary = await this.own(user, id);
+    const bookingModel =
+      dto.bookingType === 'flight' ? 'FlightBooking' : 'HotelBooking';
+    const booking =
+      dto.bookingType === 'flight'
+        ? await this.flightBookings
+            .findOne({ _id: dto.bookingId, userId: user._id })
+            .select('status segments.flightId')
+            .lean()
+            .exec()
+        : await this.hotelBookings
+            .findOne({ _id: dto.bookingId, userId: user._id })
+            .select('status checkInDate')
+            .lean()
+            .exec();
+    if (!booking) throw new NotFoundException('Booking not found.');
+    if (
+      booking.status !== BookingStatus.CONFIRMED &&
+      booking.status !== BookingStatus.COMPLETED
+    )
+      throw new ConflictException(
+        'Only confirmed or completed bookings can be linked.',
+      );
+    if (
+      daysOf(itinerary).some((day) =>
+        (day.linkedBookings ?? []).some((link) =>
+          link.bookingId.equals(dto.bookingId),
+        ),
+      )
+    )
+      throw new ConflictException(
+        'This booking is already linked to this itinerary.',
+      );
+
+    let day: DayDoc;
+    if (dto.dayId) {
+      day = this.findDay(itinerary, dto.dayId);
+    } else {
+      const date =
+        'checkInDate' in booking
+          ? booking.checkInDate
+          : (
+              await this.flights
+                .findById(booking.segments[0].flightId)
+                .select('departureLocalDate')
+                .lean()
+                .exec()
+            )?.departureLocalDate;
+      const index = daysOf(itinerary).findIndex(
+        (_d, i) => dayDate(itinerary.startDate, i) === date,
+      );
+      if (index < 0)
+        throw new BadRequestException(
+          `No day of this itinerary falls on ${date ?? 'the booking date'}. Send dayId to choose one.`,
+        );
+      day = daysOf(itinerary)[index];
+    }
+    day.linkedBookings.push({ bookingModel, bookingId: booking._id });
+    return this.save(itinerary);
+  }
+
+  async unlinkBooking(
+    user: UserDocument,
+    id: string,
+    linkId: string,
+  ): Promise<ItineraryDetailsDto> {
+    const itinerary = await this.own(user, id);
+    for (const day of daysOf(itinerary)) {
+      const link = Types.ObjectId.isValid(linkId)
+        ? day.linkedBookings.id(linkId)
+        : null;
+      if (link) {
+        link.deleteOne();
+        return this.save(itinerary);
+      }
+    }
+    throw new NotFoundException('Linked booking not found.');
   }
 
   /** The owner's itinerary as a document; anyone else gets 404 (ACC-11). */

@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -97,6 +98,12 @@ export class HotelBookingsService {
     dto: CreateHotelBookingDto,
     now = new Date(),
   ): Promise<HotelBookingDto> {
+    // ACC-02: travelers verify their email address before booking.
+    if (user.emailVerified === false)
+      throw new ForbiddenException(
+        'Verify your email address before booking. Use the link we emailed you, or request a new one with POST /api/auth/resend-verification.',
+      );
+
     const roomIds = dto.rooms.map((room) => room.roomId);
     if (new Set(roomIds).size !== roomIds.length)
       throw new BadRequestException('Select each room only once.');
