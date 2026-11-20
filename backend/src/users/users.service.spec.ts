@@ -52,6 +52,7 @@ describe('UsersService', () => {
         passwordHash: 'scrypt$hash',
         role: UserRole.TRAVELER,
         termsAndPrivacyAcceptedAt: input.termsAndPrivacyAcceptedAt,
+        emailVerified: false,
       });
     });
 

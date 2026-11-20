@@ -11,6 +11,7 @@ import {
 } from './dto/itinerary-responses.dto';
 import {
   cityGroups,
+  countsInBudget,
   dayDate,
   ItineraryPresenter,
   StoredItinerary,
@@ -75,6 +76,19 @@ export class ItineraryBudgetService {
             activity.cost.amountMinorUnits,
             activity.cost.currency,
           );
+      // ITN-27: confirmed linked bookings feed the budget. Booking charges
+      // stay in EGP (PAY-04); this only converts them for planning.
+      for (const link of day.linkedBookings ?? []) {
+        const booking = names.booking(link.bookingId);
+        if (booking && countsInBudget(booking.status))
+          add(
+            booking.bookingType === 'flight'
+              ? SummaryCategory.INTERCITY_TRANSPORT
+              : SummaryCategory.ACCOMMODATION,
+            booking.amountMinorUnits,
+            booking.currency,
+          );
+      }
       for (const transport of day.transportCosts)
         add(
           SummaryCategory.INTERCITY_TRANSPORT,

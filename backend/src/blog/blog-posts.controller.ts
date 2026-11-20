@@ -45,6 +45,7 @@ import {
   CreateBlogPostDto,
   DeleteBlogPostDto,
   PublishedPostsQueryDto,
+  AttachItineraryDto,
   UpdateBlogPostDto,
 } from './dto/blog-post-requests.dto';
 import {
@@ -148,6 +149,28 @@ export class BlogPostsController {
     @Body() dto: UpdateBlogPostDto,
   ) {
     return this.posts.update(user, id, dto);
+  }
+
+  @Patch(':id/itinerary')
+  @UseGuards(JwtAuthGuard)
+  @ApiCookieAuth()
+  @ApiParam({ name: 'id', description: 'Your post id.' })
+  @ApiOperation({
+    summary: 'Attach an itinerary to my post (BLG-13, optional)',
+    description:
+      'Send one of your public itinerary ids, or null to remove it. ' +
+      'Readers see it on the post page while it stays public.',
+  })
+  @ApiOkResponse({ type: BlogPostDetailsDto })
+  @ApiBadRequestResponse({
+    description: 'Not one of your public itineraries, or an invalid id.',
+  })
+  attachItinerary(
+    @CurrentUser() user: UserDocument,
+    @Param('id') id: string,
+    @Body() dto: AttachItineraryDto,
+  ) {
+    return this.posts.attachItinerary(user, id, dto.itineraryId);
   }
 
   @Delete(':id')

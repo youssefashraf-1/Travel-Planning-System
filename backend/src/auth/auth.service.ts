@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   HttpException,
   HttpStatus,
@@ -15,7 +16,14 @@ import {
   MAX_FAILED_LOGIN_ATTEMPTS,
   SESSION_EXPIRED_MESSAGE,
 } from './auth.constants';
+import { MailService } from '../common/mail/mail.service';
+import { AccountTokensService } from './account-tokens.service';
+import {
+  ForgotPasswordDto,
+  ResetPasswordDto,
+} from './dto/account-recovery.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
+import { AccountTokenPurpose } from './schemas/account-token.schema';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { PasswordHasherService } from './password-hasher.service';
@@ -47,6 +55,8 @@ export class AuthService {
     private readonly passwordHasher: PasswordHasherService,
     private readonly tokenService: TokenService,
     private readonly sessionsService: SessionsService,
+    private readonly accountTokens: AccountTokensService,
+    private readonly mail: MailService,
   ) {}
 
   /**
@@ -62,7 +72,100 @@ export class AuthService {
       passwordHash,
       termsAndPrivacyAcceptedAt: new Date(),
     });
+    await this.sendVerification(user._id, user.name, user.email);
     return UserResponseDto.fromUser(user);
+  }
+
+  /** ACC-02: follows the emailed link. Each link works once, for 24 hours. */
+  async verifyEmail(token: string, now = new Date()): Promise<void> {
+    const userId = await this.accountTokens.consume(
+      token,
+      AccountTokenPurpose.EMAIL_VERIFICATION,
+      now,
+    );
+    if (!userId)
+      throw new BadRequestException(
+        'This verification link is invalid or has expired. Request a new one after logging in.',
+      );
+    await this.usersService.markEmailVerified(userId);
+  }
+
+  /** ACC-02: sends a new verification link; earlier links stop working. */
+  async resendVerification(userId: Types.ObjectId): Promise<void> {
+    const user = await this.usersService.findById(userId.toString());
+    if (!user) throw new UnauthorizedException(SESSION_EXPIRED_MESSAGE);
+    if (user.emailVerified !== false)
+      throw new ConflictException('This email address is already verified.');
+    await this.sendVerification(user._id, user.name, user.email);
+  }
+
+  /**
+   * ACC-07: emails a reset link valid for 30 minutes. A newer request
+   * invalidates older links. The response is the same whether or not the
+   * email belongs to an account, so it cannot be used to find accounts.
+   */
+  async forgotPassword(
+    dto: ForgotPasswordDto,
+    now = new Date(),
+  ): Promise<void> {
+    const user = await this.usersService.findByEmail(dto.email);
+    if (!user || user.status !== UserStatus.ACTIVE) return;
+    const token = await this.accountTokens.issue(
+      user._id,
+      AccountTokenPurpose.PASSWORD_RESET,
+      30,
+      now,
+    );
+    // Not awaited: the reply time must not reveal whether an email was sent.
+    void this.mail.send({
+      to: user.email,
+      subject: 'Reset your Travel Planning password',
+      text:
+        `Hello ${user.name},\n\nSomeone asked to reset the password for this account. ` +
+        `Open this link within 30 minutes to choose a new one:\n\n` +
+        `${this.mail.frontendUrl()}/reset-password?token=${token}\n\n` +
+        `The link works once. If you did not ask for this, ignore this email.`,
+    });
+  }
+
+  /**
+   * ACC-07: sets the new password with a valid, unused link token. The
+   * account's sessions end, any lockout clears, and the link stops working.
+   */
+  async resetPassword(dto: ResetPasswordDto, now = new Date()): Promise<void> {
+    const userId = await this.accountTokens.consume(
+      dto.token,
+      AccountTokenPurpose.PASSWORD_RESET,
+      now,
+    );
+    if (!userId)
+      throw new BadRequestException(
+        'This reset link is invalid, already used or expired. Request a new one.',
+      );
+    const passwordHash = await this.passwordHasher.hash(dto.newPassword);
+    await this.usersService.setPassword(userId, passwordHash, false);
+    await this.sessionsService.revokeAllForUser(userId, now);
+  }
+
+  private async sendVerification(
+    userId: Types.ObjectId,
+    name: string,
+    email: string,
+  ): Promise<void> {
+    const token = await this.accountTokens.issue(
+      userId,
+      AccountTokenPurpose.EMAIL_VERIFICATION,
+      24 * 60,
+    );
+    await this.mail.send({
+      to: email,
+      subject: 'Verify your Travel Planning email address',
+      text:
+        `Hello ${name},\n\nWelcome! Confirm your email address to start booking ` +
+        `flights and hotels:\n\n` +
+        `${this.mail.apiUrl()}/api/auth/verify-email?token=${token}\n\n` +
+        `The link is valid for 24 hours.`,
+    });
   }
 
   /**

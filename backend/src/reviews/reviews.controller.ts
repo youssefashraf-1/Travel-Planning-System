@@ -36,6 +36,8 @@ import {
   CreateReviewDto,
   HotelReviewListDto,
   MyReviewDto,
+  ReplyToReviewDto,
+  ReviewDto,
   UpdateReviewDto,
 } from './dto/review.dto';
 import { ReviewsService } from './reviews.service';
@@ -89,6 +91,33 @@ export class ReviewsController {
     @Body() dto: UpdateReviewDto,
   ): Promise<MyReviewDto> {
     return this.reviews.update(user, id, dto);
+  }
+
+  @Post('reviews/:id/reply')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.HOTEL_MODERATOR)
+  @ApiCookieAuth()
+  @ApiParam({ name: 'id', description: 'The review id.' })
+  @ApiOperation({
+    summary: 'Reply to a review of my hotel (HTL-26, optional)',
+    description:
+      "Only the moderator of the review's hotel. Shown under the review; " +
+      'posting again replaces the reply.',
+  })
+  @ApiOkResponse({ type: ReviewDto })
+  @ApiBadRequestResponse({
+    description: 'Empty or longer than 1000 characters.',
+  })
+  @ApiUnauthorizedResponse({ description: 'Not logged in.' })
+  @ApiForbiddenResponse({ description: "Not this hotel's moderator." })
+  @ApiNotFoundResponse({ description: 'Review not found or hidden.' })
+  reply(
+    @CurrentUser() user: UserDocument,
+    @Param('id') id: string,
+    @Body() dto: ReplyToReviewDto,
+  ): Promise<ReviewDto> {
+    return this.reviews.reply(user, id, dto);
   }
 
   @Delete('reviews/:id')

@@ -1,7 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
+import { BookingStatus } from '../common/booking-status';
+import { FlightBooking } from '../flight-bookings/schemas/flight-booking.schema';
+import { Flight } from '../flights/schemas/flight.schema';
+import { HotelBooking } from '../hotel-bookings/schemas/hotel-booking.schema';
 import { addDays } from '../hotels/hotel-dates';
+import { Hotel } from '../hotels/schemas/hotel.schema';
 import { City } from '../reference-data/schemas/city.schema';
 import { Country } from '../reference-data/schemas/country.schema';
 import { DELETED_USER } from '../reviews/reviews.service';
@@ -21,6 +26,23 @@ export type StoredItinerary = Itinerary & {
 };
 
 type Named = { _id: Types.ObjectId };
+
+/** ITN-27: the booking facts shown on a day and counted in the budget. */
+export interface LinkedBookingInfo {
+  bookingType: 'flight' | 'hotel';
+  reference?: string;
+  status: string;
+  title: string;
+  amountMinorUnits: number;
+  currency: string;
+}
+
+/** Only confirmed or completed bookings feed the budget (ITN-27). */
+export function countsInBudget(status: string): boolean {
+  return (
+    status === BookingStatus.CONFIRMED || status === BookingStatus.COMPLETED
+  );
+}
 
 /** ITN-05: day N falls N − 1 days after the start date. */
 export function dayDate(startDate: string, index: number): string {
@@ -62,6 +84,12 @@ export class ItineraryPresenter {
     @InjectModel(City.name) private readonly cities: Model<City>,
     @InjectModel(Country.name) private readonly countries: Model<Country>,
     @InjectModel(User.name) private readonly users: Model<User>,
+    @InjectModel(FlightBooking.name)
+    private readonly flightBookings: Model<FlightBooking>,
+    @InjectModel(HotelBooking.name)
+    private readonly hotelBookings: Model<HotelBooking>,
+    @InjectModel(Flight.name) private readonly flights: Model<Flight>,
+    @InjectModel(Hotel.name) private readonly hotels: Model<Hotel>,
   ) {}
 
   async names(itineraries: StoredItinerary[]) {
@@ -81,6 +109,72 @@ export class ItineraryPresenter {
         }
       }
     }
+    const links = itineraries.flatMap((i) =>
+      i.days.flatMap((d) => d.linkedBookings ?? []),
+    );
+    const idsOf = (model: string) =>
+      links.filter((l) => l.bookingModel === model).map((l) => l.bookingId);
+    const [flightBookings, hotelBookings] = await Promise.all([
+      this.flightBookings
+        .find({ _id: { $in: idsOf('FlightBooking') } })
+        .select('reference status totalMinorUnits currency segments.flightId')
+        .lean()
+        .exec(),
+      this.hotelBookings
+        .find({ _id: { $in: idsOf('HotelBooking') } })
+        .select(
+          'reference status totalMinorUnits currency hotelId checkInDate checkOutDate',
+        )
+        .lean()
+        .exec(),
+    ]);
+    const [bookedFlights, bookedHotels] = await Promise.all([
+      this.flights
+        .find({
+          _id: {
+            $in: flightBookings.flatMap((b) =>
+              b.segments.map((s) => s.flightId),
+            ),
+          },
+        })
+        .select('flightNumber')
+        .lean()
+        .exec(),
+      this.hotels
+        .find({ _id: { $in: hotelBookings.map((b) => b.hotelId) } })
+        .select('name')
+        .lean()
+        .exec(),
+    ]);
+    const flightNumber = new Map(
+      bookedFlights.map((f) => [f._id.toString(), f.flightNumber]),
+    );
+    const hotelName = new Map(
+      bookedHotels.map((h) => [h._id.toString(), h.name]),
+    );
+    const bookingById = new Map<string, LinkedBookingInfo>();
+    for (const b of flightBookings)
+      bookingById.set(b._id.toString(), {
+        bookingType: 'flight',
+        reference: b.reference,
+        status: b.status,
+        title: `Flight ${b.segments
+          .map((s) => flightNumber.get(s.flightId.toString()) ?? '')
+          .filter(Boolean)
+          .join(' + ')}`,
+        amountMinorUnits: b.totalMinorUnits,
+        currency: b.currency,
+      });
+    for (const b of hotelBookings)
+      bookingById.set(b._id.toString(), {
+        bookingType: 'hotel',
+        reference: b.reference,
+        status: b.status,
+        title: `${hotelName.get(b.hotelId.toString()) ?? 'Hotel'}, ${b.checkInDate} to ${b.checkOutDate}`,
+        amountMinorUnits: b.totalMinorUnits,
+        currency: b.currency,
+      });
+
     const [cities, countries, users] = await Promise.all([
       this.cities
         .find({ _id: { $in: [...cityIds] } })
@@ -109,6 +203,7 @@ export class ItineraryPresenter {
       cityCountry: (id: string) => cityById.get(id)?.countryCode ?? '',
       country: (code: string) => countryName.get(code) ?? code,
       user: (id: Types.ObjectId) => userName.get(id.toString()) ?? DELETED_USER,
+      booking: (id: Types.ObjectId) => bookingById.get(id.toString()),
     };
   }
 
@@ -169,6 +264,19 @@ export class ItineraryPresenter {
           amountMinorUnits: entry.amountMinorUnits,
           currency: entry.currency,
         })),
+        linkedBookings: (day.linkedBookings ?? []).flatMap((link) => {
+          const booking = names.booking(link.bookingId);
+          return booking
+            ? [
+                {
+                  id: id(link as unknown as Named),
+                  bookingId: link.bookingId.toString(),
+                  ...booking,
+                  countsInBudget: countsInBudget(booking.status),
+                },
+              ]
+            : [];
+        }),
         transportCosts: day.transportCosts.map((transport) => ({
           id: id(transport as unknown as Named),
           mode: transport.mode,

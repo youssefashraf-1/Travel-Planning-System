@@ -2,6 +2,7 @@ import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 import {
   ArrayMaxSize,
+  IsMongoId,
   ArrayUnique,
   Equals,
   IsArray,
@@ -91,4 +92,17 @@ export class DeleteBlogPostDto {
   @IsBoolean()
   @Equals(true)
   confirm: boolean;
+}
+
+/** BLG-13 (optional): attach one of your public itineraries, or null to remove it. */
+export class AttachItineraryDto {
+  @ApiProperty({
+    type: String,
+    nullable: true,
+    example: '6740f0c2a1b2c3d4e5f60718',
+    description: 'One of your public itineraries, or null to detach.',
+  })
+  @ValidateIf((_object, value: unknown) => value !== null)
+  @IsMongoId()
+  itineraryId: string | null;
 }

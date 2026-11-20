@@ -6,12 +6,20 @@ import {
 import { Types } from 'mongoose';
 import { UserRole, UserStatus } from '../users/schemas/user.schema';
 import { UsersService } from '../users/users.service';
+import { AccountTokensService } from './account-tokens.service';
+import { MailService } from '../common/mail/mail.service';
 import { AuthService, INVALID_CREDENTIALS_MESSAGE } from './auth.service';
 import { PasswordHasherService } from './password-hasher.service';
 import { SessionsService } from './sessions.service';
 import { TokenService } from './token.service';
 
 describe('AuthService', () => {
+  const accountTokens = { issue: jest.fn(), consume: jest.fn() };
+  const mail = {
+    send: jest.fn(),
+    apiUrl: () => 'http://api.test',
+    frontendUrl: () => 'http://app.test',
+  };
   const usersService = {
     createTraveler: jest.fn(),
     findById: jest.fn(),
@@ -56,11 +64,14 @@ describe('AuthService', () => {
 
   beforeEach(() => {
     jest.resetAllMocks();
+    accountTokens.issue.mockResolvedValue('token-1');
     service = new AuthService(
       usersService as unknown as UsersService,
       passwordHasher as unknown as PasswordHasherService,
       tokenService as unknown as TokenService,
       sessionsService as unknown as SessionsService,
+      accountTokens as unknown as AccountTokensService,
+      mail as unknown as MailService,
     );
     sessionsService.create.mockResolvedValue({
       session: { _id: sessionId, id: sessionId.toString() },
@@ -92,8 +103,23 @@ describe('AuthService', () => {
         role: UserRole.TRAVELER,
         status: UserStatus.ACTIVE,
         mustChangePassword: false,
+        emailVerified: true,
         createdAt: now,
       });
+      // ACC-02: a verification link is emailed after registration.
+      expect(accountTokens.issue).toHaveBeenCalledWith(
+        id,
+        'email_verification',
+        24 * 60,
+      );
+      expect(mail.send).toHaveBeenCalledWith(
+        expect.objectContaining({
+          to: 'mona.hassan@example.com',
+          text: expect.stringContaining(
+            'http://api.test/api/auth/verify-email?token=token-1',
+          ),
+        }),
+      );
     });
   });
 
