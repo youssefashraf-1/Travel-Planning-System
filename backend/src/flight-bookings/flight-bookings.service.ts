@@ -150,6 +150,23 @@ export class FlightBookingsService {
     await this.releaseStaleHolds(dto, now);
     const bookingId = await this.connection.transaction(async (session) => {
       const plan = await this.plan(dto, now, session);
+      // ACC-15: serialize new holds against provider deactivation, in id order.
+      const airlineIds = [
+        ...new Set(plan.legs.map((leg) => leg.airline._id.toString())),
+      ].sort((a, b) => a.localeCompare(b));
+      for (const id of airlineIds) {
+        const locked = await this.airlines
+          .updateOne(
+            { _id: id, isActive: true },
+            { $inc: { __v: 1 } },
+            { session, timestamps: false },
+          )
+          .exec();
+        if (locked.matchedCount !== 1)
+          throw new ConflictException(
+            'An airline is no longer taking bookings.',
+          );
+      }
       await this.lifecycle.lockFlights(
         plan.legs.map((leg) => leg.flight._id),
         now,

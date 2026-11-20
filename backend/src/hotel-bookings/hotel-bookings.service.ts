@@ -127,6 +127,16 @@ export class HotelBookingsService {
       if (!hotel) throw new NotFoundException('Hotel not found.');
       if (!hotel.isActive)
         throw new ConflictException('This hotel is not taking bookings.');
+      // ACC-15: a new hold must not race a provider deactivation.
+      const locked = await this.hotels
+        .updateOne(
+          { _id: hotel._id, isActive: true },
+          { $inc: { __v: 1 } },
+          { session, timestamps: false },
+        )
+        .exec();
+      if (locked.matchedCount !== 1)
+        throw new ConflictException('This hotel is not taking bookings.');
       if (!hotel.policy)
         throw new ConflictException(
           'This hotel cannot take bookings until it sets its policies.',
