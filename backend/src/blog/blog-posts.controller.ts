@@ -77,6 +77,17 @@ export class BlogPostsController {
     return this.posts.listPublished(query);
   }
 
+  @Get('search')
+  @ApiOperation({
+    summary: 'Search published posts (BLG-09)',
+    description:
+      'Keyword in title, tags or author name; optional exact tag filter. Ordered by likes plus visible comments, then newest publication first. Empty results return items:[].',
+  })
+  @ApiOkResponse({ type: BlogPostListDto })
+  search(@Query() query: PublishedPostsQueryDto) {
+    return this.posts.listPublished(query, undefined, true);
+  }
+
   // Static routes precede :id, so mine cannot be mistaken for a public post id.
   @Get('mine')
   @UseGuards(JwtAuthGuard)
@@ -100,11 +111,11 @@ export class BlogPostsController {
   @ApiOperation({
     summary: 'Read a published post (BLG-02)',
     description:
-      'Public. Core post content and interaction counts. Comment interaction endpoints follow in the next group.',
+      'Public. Post content, interaction counts and chronological comments (ten per page; use page for later comments).',
   })
   @ApiOkResponse({ type: BlogPostDetailsDto })
-  published(@Param('id') id: string) {
-    return this.posts.publishedDetails(id);
+  published(@Param('id') id: string, @Query() query: PageQueryDto) {
+    return this.posts.publishedDetails(id, query.page);
   }
 
   @Post()

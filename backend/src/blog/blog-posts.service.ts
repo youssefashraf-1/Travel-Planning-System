@@ -11,7 +11,13 @@ import {
   Model,
   Types,
 } from 'mongoose';
-import { PAGE_SIZE, pageInfo, PageQueryDto } from '../common/pagination';
+import {
+  escapeRegExp,
+  PAGE_SIZE,
+  pageInfo,
+  PageQueryDto,
+} from '../common/pagination';
+import { BlogCommunityService } from './blog-community.service';
 import {
   ImageUploadsService,
   UploadedImage,
@@ -50,6 +56,7 @@ export class BlogPostsService {
     @InjectModel(Like.name) private readonly likes: Model<Like>,
     @InjectModel(User.name) private readonly users: Model<User>,
     private readonly uploads: ImageUploadsService,
+    private readonly community: BlogCommunityService,
   ) {}
 
   async create(
@@ -69,7 +76,11 @@ export class BlogPostsService {
   }
 
   /** BLG-02: fixed pages of ten, newest published first, exact normalized tag. */
-  async listPublished(query: PublishedPostsQueryDto): Promise<BlogPostListDto> {
+  async listPublished(
+    query: PublishedPostsQueryDto,
+    authorId?: Types.ObjectId,
+    ranked = false,
+  ): Promise<BlogPostListDto> {
     const page = query.page ?? 1;
     const result = await this.posts
       .aggregate<{
@@ -80,6 +91,7 @@ export class BlogPostsService {
           $match: {
             status: BlogPostStatus.PUBLISHED,
             hiddenAt: null,
+            ...(authorId ? { authorId } : {}),
             ...(query.tag === undefined ? {} : { tags: query.tag }),
           },
         },
@@ -96,10 +108,72 @@ export class BlogPostsService {
           },
         },
         { $unwind: '$author' },
+        ...(query.keyword
+          ? [
+              {
+                $match: {
+                  $or: [
+                    { title: new RegExp(escapeRegExp(query.keyword), 'i') },
+                    { tags: new RegExp(escapeRegExp(query.keyword), 'i') },
+                    {
+                      'author.name': new RegExp(
+                        escapeRegExp(query.keyword),
+                        'i',
+                      ),
+                    },
+                  ],
+                },
+              },
+            ]
+          : []),
+        {
+          $lookup: {
+            from: this.likes.collection.name,
+            let: { post: '$_id' },
+            pipeline: [
+              { $match: { $expr: { $eq: ['$postId', '$$post'] } } },
+              { $count: 'count' },
+            ],
+            as: 'likeMetrics',
+          },
+        },
+        {
+          $lookup: {
+            from: this.comments.collection.name,
+            let: { post: '$_id' },
+            pipeline: [
+              {
+                $match: {
+                  hiddenAt: null,
+                  $expr: { $eq: ['$postId', '$$post'] },
+                },
+              },
+              { $count: 'count' },
+            ],
+            as: 'commentMetrics',
+          },
+        },
+        {
+          $set: {
+            interactionScore: {
+              $add: [
+                { $ifNull: [{ $arrayElemAt: ['$likeMetrics.count', 0] }, 0] },
+                {
+                  $ifNull: [{ $arrayElemAt: ['$commentMetrics.count', 0] }, 0],
+                },
+              ],
+            },
+          },
+        },
         {
           $facet: {
             items: [
-              { $sort: { publishedAt: -1, _id: -1 } },
+              {
+                $sort:
+                  ranked || query.keyword
+                    ? { interactionScore: -1, publishedAt: -1, _id: -1 }
+                    : { publishedAt: -1, _id: -1 },
+              },
               { $skip: (page - 1) * PAGE_SIZE },
               { $limit: PAGE_SIZE },
             ],
@@ -117,7 +191,7 @@ export class BlogPostsService {
     };
   }
 
-  async publishedDetails(id: string): Promise<BlogPostDetailsDto> {
+  async publishedDetails(id: string, page = 1): Promise<BlogPostDetailsDto> {
     if (!Types.ObjectId.isValid(id)) throw new NotFoundException(NOT_FOUND);
     const post = await this.posts
       .findOne({
@@ -136,7 +210,7 @@ export class BlogPostsService {
           .exec()
       : null;
     if (!post || !author) throw new NotFoundException(NOT_FOUND);
-    return this.details(post, author);
+    return this.details(post, author, page);
   }
 
   async listMine(
@@ -270,10 +344,12 @@ export class BlogPostsService {
   private async details(
     post: PostDocument,
     author: Author,
+    page = 1,
   ): Promise<BlogPostDetailsDto> {
     const stored = post.toObject<StoredPost>();
     return Object.assign(await this.summary(stored, author), {
       body: stored.body,
+      comments: await this.community.visibleComments(post._id, page),
     });
   }
 
@@ -300,6 +376,8 @@ export class BlogPostsService {
       })),
       likeCount,
       commentCount,
+      excerpt: post.body.slice(0, 200),
+      interactionScore: likeCount + commentCount,
       hidden: post.hiddenAt != null,
     };
   }
