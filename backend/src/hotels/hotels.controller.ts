@@ -13,7 +13,7 @@ import {
   ProviderMediaService,
   ProviderPhotoDto,
 } from '../common/uploads/provider-media.service';
-import { RemoveProviderImageDto } from '../common/uploads/provider-media.dto';
+import { ConfirmActionDto } from '../common/dto/confirm-action.dto';
 import {
   applyDecorators,
   Body,
@@ -258,6 +258,7 @@ export class HotelsController {
   deleteRoom(
     @Param('id') id: string,
     @Param('roomId') roomId: string,
+    @Body() _confirmation: ConfirmActionDto,
   ): Promise<void> {
     return this.rooms.deleteRoom(id, roomId);
   }
@@ -382,7 +383,7 @@ export class HotelsController {
   removePhoto(
     @Param('id') id: string,
     @Param('photoId') photoId: string,
-    @Body() _dto: RemoveProviderImageDto,
+    @Body() _dto: ConfirmActionDto,
   ) {
     return this.media.removePhoto(id, photoId);
   }

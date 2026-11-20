@@ -1,6 +1,6 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model, Types } from 'mongoose';
+import { InjectConnection, InjectModel } from '@nestjs/mongoose';
+import { Connection, Model, Types } from 'mongoose';
 import { assertOwnedBy } from '../auth/access';
 import {
   Notification,
@@ -38,6 +38,7 @@ export class RefundsService {
   private readonly logger = new Logger(RefundsService.name);
 
   constructor(
+    @InjectConnection() private readonly connection: Connection,
     @InjectModel(Refund.name) private readonly refunds: Model<Refund>,
     @InjectModel(Payment.name) private readonly payments: Model<Payment>,
     @InjectModel(Notification.name)
@@ -48,11 +49,13 @@ export class RefundsService {
 
   /** Sends new refunds to Stripe and checks on ones still pending there. */
   async dispatchPending(): Promise<void> {
-    const pending = await this.refunds
+    // A bounded first page can permanently starve later refunds behind ones
+    // that stay pending remotely. Stream all pending rows in stable id order.
+    const pending = this.refunds
       .find({ status: RefundStatus.PENDING })
-      .limit(100)
-      .exec();
-    for (const refund of pending) {
+      .sort({ _id: 1 })
+      .cursor({ batchSize: 100 });
+    for await (const refund of pending) {
       try {
         await this.sync(refund);
       } catch {
@@ -168,48 +171,58 @@ export class RefundsService {
     state: RefundState,
   ): Promise<void> {
     const status = refundStatusOf(state);
-    const updated = await this.refunds
-      .findOneAndUpdate(
-        // A finished refund never changes again.
-        { _id: refund._id, status: RefundStatus.PENDING },
-        { $set: { stripeRefundId: state.id, status } },
-        { returnDocument: 'after' },
-      )
-      .exec();
-    if (!updated || status === RefundStatus.PENDING) return;
+    // A final state and its notification commit together. A failed write leaves
+    // the refund pending, so webhook delivery or polling can retry safely.
+    // Stripe requests happen before this transaction, using the same idempotency key.
+    await this.connection.transaction(async (session) => {
+      const updated = await this.refunds
+        .findOneAndUpdate(
+          // A finished refund never changes again.
+          { _id: refund._id, status: RefundStatus.PENDING },
+          { $set: { stripeRefundId: state.id, status } },
+          { returnDocument: 'after', session },
+        )
+        .exec();
+      if (!updated || status === RefundStatus.PENDING) return;
 
-    const payment = await this.payments
-      .findById(updated.paymentId)
-      .lean()
-      .exec();
-    const booking = payment
-      ? await this.targets.find(payment.bookingModel, payment.bookingId)
-      : null;
-    if (!booking) return;
-    const amount = `${updated.amountMinorUnits} ${updated.currency} minor units`;
-    await this.notifications
-      .updateOne(
-        {
-          recipientId: booking.userId,
-          eventKey: `refund:${updated.id}:${status}`,
-        },
-        {
-          $setOnInsert: {
-            type: NotificationType.REFUND_UPDATED,
-            subjectModel: Refund.name,
-            subjectId: updated._id,
-            title:
-              status === RefundStatus.REFUNDED
-                ? 'Refund completed'
-                : 'Refund failed',
-            message:
-              status === RefundStatus.REFUNDED
-                ? `Your refund of ${amount}${booking.reference ? ` for booking ${booking.reference}` : ''} was sent to your card.`
-                : `Your refund of ${amount}${booking.reference ? ` for booking ${booking.reference}` : ''} could not be completed${state.failureReason ? ` (${state.failureReason})` : ''}. Our team will follow up.`,
+      const payment = await this.payments
+        .findById(updated.paymentId)
+        .session(session)
+        .lean()
+        .exec();
+      const booking = payment
+        ? await this.targets.find(
+            payment.bookingModel,
+            payment.bookingId,
+            session,
+          )
+        : null;
+      if (!booking) return;
+      const amount = `${updated.amountMinorUnits} ${updated.currency} minor units`;
+      await this.notifications
+        .updateOne(
+          {
+            recipientId: booking.userId,
+            eventKey: `refund:${updated.id}:${status}`,
           },
-        },
-        { upsert: true },
-      )
-      .exec();
+          {
+            $setOnInsert: {
+              type: NotificationType.REFUND_UPDATED,
+              subjectModel: Refund.name,
+              subjectId: updated._id,
+              title:
+                status === RefundStatus.REFUNDED
+                  ? 'Refund completed'
+                  : 'Refund failed',
+              message:
+                status === RefundStatus.REFUNDED
+                  ? `Your refund of ${amount}${booking.reference ? ` for booking ${booking.reference}` : ''} was sent to your card.`
+                  : `Your refund of ${amount}${booking.reference ? ` for booking ${booking.reference}` : ''} could not be completed${state.failureReason ? ` (${state.failureReason})` : ''}. Our team will follow up.`,
+            },
+          },
+          { upsert: true, session },
+        )
+        .exec();
+    });
   }
 }

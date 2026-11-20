@@ -13,7 +13,7 @@ import {
   ProviderMediaService,
   ProviderLogoDto,
 } from '../common/uploads/provider-media.service';
-import { RemoveProviderImageDto } from '../common/uploads/provider-media.dto';
+import { ConfirmActionDto } from '../common/dto/confirm-action.dto';
 import {
   Body,
   Controller,
@@ -173,7 +173,7 @@ export class AirlinesController {
     description: 'Requires confirm:true. Repeating removal is safe.',
   })
   @ApiOkResponse({ type: ProviderLogoDto })
-  removeLogo(@Param('id') id: string, @Body() _dto: RemoveProviderImageDto) {
+  removeLogo(@Param('id') id: string, @Body() _dto: ConfirmActionDto) {
     return this.media.removeLogo(id);
   }
 }

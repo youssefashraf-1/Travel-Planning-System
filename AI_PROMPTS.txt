@@ -511,3 +511,26 @@ API tests cover privacy, permissions, status, concurrent uploads, validation,
 failure cleanup and path containment; the full regression suites are run.
 No frontend or shared database records are created by this verification.
 ================================================
+
+================================================
+Date: 2026-11-20
+Requested commit identity: youssefashraf-1
+Tool: Codex
+Related requirements: Phase 13 Task 1; GEN-03, GEN-05, GEN-07,
+GEN-13, ACC-07a, ACC-15, ACC-16, PAY-03 and existing backend API contracts.
+Prompt summary:
+Perform the first of two Phase 13 tasks: test APIs, permissions, bookings,
+payments and refunds, and fix discovered issues. Documentation/final milestone
+review is reserved for the next task.
+How the output was used:
+Codex ran the existing isolated unit/API suites and added a whole-API access
+matrix for 128 documented operations plus unsigned-webhook rejection. Regression
+tests reproduced lost refund notifications and refund queue starvation before
+fixing them. Refund status/notification and admin account changes/session/audit
+writes now use transactions. Eight older delete endpoints now enforce explicit
+confirmation, and shared pagination rejects unsafe offsets. Added API cases
+cover rollback/retry, the 101-refund queue, access boundaries, confirmations and
+pagination. Captured access results and a scoped Phase 13 test report are saved.
+Payment verification uses a fake gateway and real signature validation; no real
+Stripe transaction or shared Atlas data is used. Milestone 1 is not marked complete.
+================================================

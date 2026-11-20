@@ -31,6 +31,7 @@ import {
   Notification,
   NotificationType,
 } from '../src/notifications/schemas/notification.schema';
+import { RefundsService } from '../src/payments/refunds.service';
 import { PaymentsService } from '../src/payments/payments.service';
 import { Payment, PaymentStatus } from '../src/payments/schemas/payment.schema';
 import { Refund, RefundStatus } from '../src/payments/schemas/refund.schema';
@@ -299,6 +300,7 @@ describe('Payments and refunds (PAY-01 to PAY-04, e2e)', () => {
       .useValue(stripe)
       .compile();
     app = moduleFixture.createNestApplication({ rawBody: true });
+    app.useLogger(false);
     configureApp(app);
     await app.init();
     const model = <T>(name: string) => app.get<Model<T>>(getModelToken(name));
@@ -760,6 +762,114 @@ describe('Payments and refunds (PAY-01 to PAY-04, e2e)', () => {
       expect((await models.refunds.findById(stored!._id))!.status).toBe(
         RefundStatus.FAILED,
       );
+    });
+  });
+  describe('Phase 13 refund resilience', () => {
+    it.each(['succeeded', 'failed'] as const)(
+      'rolls back a %s refund status when its notification fails, then retries exactly once',
+      async (remoteStatus) => {
+        const bookingId = await holdHotel(
+          remoteStatus === 'succeeded' ? 140 : 150,
+        );
+        await accept('hotel', bookingId);
+        const payment = (
+          await pay('hotel', bookingId, {
+            testPaymentMethod: 'pm_card_visa',
+          }).expect(201)
+        ).body;
+        await call('post', `/hotel-bookings/${bookingId}/cancel`, 'traveler')
+          .send({ confirm: true })
+          .expect(200);
+        const refund = (await models.refunds.findOne({
+          paymentId: payment.id,
+        }))!;
+        const stripeRefundId = `re_phase13_${refund.id}`;
+        await models.refunds.updateOne(
+          { _id: refund._id },
+          { $set: { stripeRefundId } },
+        );
+        const state = {
+          id: stripeRefundId,
+          object: 'refund',
+          status: remoteStatus,
+        };
+        const spy = jest
+          .spyOn(models.notifications, 'updateOne')
+          .mockImplementationOnce(() => {
+            throw new Error('simulated notification failure');
+          });
+        try {
+          await webhook('refund.updated', state).expect(500);
+          expect((await models.refunds.findById(refund._id))!.status).toBe(
+            RefundStatus.PENDING,
+          );
+        } finally {
+          spy.mockRestore();
+        }
+        await webhook('refund.updated', state).expect(200);
+        await webhook('refund.updated', state).expect(200);
+        expect((await models.refunds.findById(refund._id))!.status).toBe(
+          remoteStatus === 'succeeded'
+            ? RefundStatus.REFUNDED
+            : RefundStatus.FAILED,
+        );
+        expect(
+          await models.notifications.countDocuments({
+            subjectId: refund._id,
+            type: NotificationType.REFUND_UPDATED,
+          }),
+        ).toBe(1);
+      },
+    );
+    it('processes later refunds even when the first 100 remain pending at Stripe', async () => {
+      const bookingId = await holdHotel(160);
+      const paymentsBatch = await models.payments.create(
+        Array.from({ length: 101 }, (_, i) => ({
+          bookingModel: 'HotelBooking',
+          bookingId,
+          stripePaymentIntentId: `pi_phase13_batch_${i}`,
+          amountMinorUnits: 100,
+          currency: 'EGP',
+          status: PaymentStatus.CANCELLED,
+          stripeReconciledAt: new Date(),
+        })),
+      );
+      const refundRows = await models.refunds.create(
+        paymentsBatch.map((payment, i) => ({
+          paymentId: payment._id,
+          amountMinorUnits: 100,
+          currency: 'EGP',
+          stripeRefundId: i < 100 ? `re_phase13_pending_${i}` : undefined,
+        })),
+        { ordered: true },
+      );
+      for (let i = 0; i < 100; i++)
+        stripe.refunds.set(`re_phase13_pending_${i}`, {
+          id: `re_phase13_pending_${i}`,
+          status: 'pending',
+        });
+      try {
+        await app.get(RefundsService).dispatchPending();
+        expect(
+          (await models.refunds.findById(refundRows[100]._id))!.status,
+        ).toBe(RefundStatus.REFUNDED);
+        expect(
+          await models.refunds.countDocuments({
+            _id: { $in: refundRows.slice(0, 100).map((r) => r._id) },
+            status: RefundStatus.PENDING,
+          }),
+        ).toBe(100);
+      } finally {
+        await models.notifications.deleteMany({
+          subjectId: { $in: refundRows.map((r) => r._id) },
+        });
+        await models.refunds.deleteMany({
+          _id: { $in: refundRows.map((r) => r._id) },
+        });
+        await models.payments.deleteMany({
+          _id: { $in: paymentsBatch.map((p) => p._id) },
+        });
+      }
     });
   });
   describe('audit regressions', () => {

@@ -67,6 +67,7 @@ describe('Account security (ACC-07a, ACC-08, ACC-12, ACC-15, ACC-16, ACC-18, e2e
     }).compile();
 
     app = moduleFixture.createNestApplication();
+    app.useLogger(false);
     configureApp(app);
     await app.init();
 
@@ -251,6 +252,96 @@ describe('Account security (ACC-07a, ACC-08, ACC-12, ACC-15, ACC-16, ACC-18, e2e
 
     const adminCall = (method: 'patch' | 'post', path: string, as = admin) =>
       request(server())[method](path).set('Cookie', as);
+
+    it.each([
+      ['suspend', 'audit'],
+      ['suspend', 'notification'],
+      ['reactivate', 'audit'],
+      ['reactivate', 'notification'],
+      ['reset-password', 'audit'],
+    ] as const)(
+      'rolls back %s, sessions and dependent writes on %s failure',
+      async (action, failingStore) => {
+        const traveler = await loginCookies(TRAVELER, PASSWORD);
+        const id = await travelerId();
+        if (action === 'reactivate')
+          await adminCall('patch', `/api/admin/accounts/${id}/suspend`)
+            .send({ confirm: true })
+            .expect(200);
+        const before = (await userModel
+          .findById(id)
+          .select('+passwordHash')
+          .lean())!;
+        const sessions = await sessionModel.find({ userId: id }).lean();
+        const audits = await auditLogModel.countDocuments({ targetId: id });
+        const notices = await notificationModel.countDocuments({
+          recipientId: id,
+        });
+        const spy = jest
+          .spyOn(
+            failingStore === 'audit' ? auditLogModel : notificationModel,
+            'create',
+          )
+          .mockImplementationOnce(() => {
+            throw new Error('simulated dependent write failure');
+          });
+        try {
+          const reset = action === 'reset-password';
+          await adminCall(
+            reset ? 'post' : 'patch',
+            reset
+              ? `/api/admin/users/${id}/reset-password`
+              : `/api/admin/accounts/${id}/${action}`,
+          )
+            .send(
+              reset ? { temporaryPassword: 'Temp2026pass' } : { confirm: true },
+            )
+            .expect(500);
+        } finally {
+          spy.mockRestore();
+        }
+        const after = (await userModel
+          .findById(id)
+          .select('+passwordHash')
+          .lean())!;
+        for (const key of [
+          'status',
+          'passwordHash',
+          'mustChangePassword',
+          'failedLoginAttempts',
+          'lockedUntil',
+        ] as const)
+          expect(after[key]).toEqual(before[key]);
+        expect(
+          (await sessionModel.find({ userId: id }).lean()).map(
+            (s) => s.revokedAt,
+          ),
+        ).toEqual(sessions.map((s) => s.revokedAt));
+        expect(await auditLogModel.countDocuments({ targetId: id })).toBe(
+          audits,
+        );
+        expect(
+          await notificationModel.countDocuments({ recipientId: id }),
+        ).toBe(notices);
+        if (action !== 'reactivate')
+          await request(server())
+            .get('/api/users/me')
+            .set('Cookie', traveler)
+            .expect(200);
+      },
+    );
+
+    it('rejects unsafe account pagination before it reaches MongoDB', async () => {
+      await request(server())
+        .get('/api/admin/accounts?page=1e20')
+        .set('Cookie', admin)
+        .expect(400);
+      const normal = await request(server())
+        .get('/api/admin/accounts?page=1')
+        .set('Cookie', admin)
+        .expect(200);
+      expect(normal.body.pageSize).toBe(10);
+    });
 
     it('only lets administrators use these routes', async () => {
       const traveler = await loginCookies(TRAVELER, PASSWORD);

@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { createHash, randomBytes } from 'crypto';
-import { Model, Types } from 'mongoose';
+import { ClientSession, Model, Types } from 'mongoose';
 import { SESSION_INACTIVITY_MINUTES } from './auth.constants';
 import { Session, SessionDocument } from './schemas/session.schema';
 
@@ -127,6 +127,7 @@ export class SessionsService {
     userId: Types.ObjectId,
     now: Date,
     exceptSessionId?: string,
+    session?: ClientSession,
   ): Promise<void> {
     const filter: Record<string, unknown> = {
       userId,
@@ -136,7 +137,7 @@ export class SessionsService {
       filter._id = { $ne: new Types.ObjectId(exceptSessionId) };
     }
     await this.sessionModel
-      .updateMany(filter, { $set: { revokedAt: now } })
+      .updateMany(filter, { $set: { revokedAt: now } }, { session })
       .exec();
   }
 }

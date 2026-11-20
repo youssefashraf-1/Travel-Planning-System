@@ -16,11 +16,15 @@ describe('AdminAccountsService', () => {
   const adminId = new Types.ObjectId();
   const accountId = new Types.ObjectId();
   const now = new Date('2026-11-19T10:00:00Z');
+  const session = {};
+  const transaction = jest.fn();
   const exec = (result: unknown) => ({
+    session: jest.fn().mockReturnThis(),
     exec: jest.fn().mockResolvedValue(result),
   });
 
   const userModel = {
+    db: { transaction },
     findById: jest.fn(),
     findOneAndUpdate: jest.fn(),
     find: jest.fn(),
@@ -53,8 +57,9 @@ describe('AdminAccountsService', () => {
 
   beforeEach(() => {
     jest.resetAllMocks();
+    transaction.mockImplementation((callback) => callback(session));
     userModel.findById.mockReturnValue(exec(account()));
-    auditLogModel.create.mockResolvedValue({ _id: new Types.ObjectId() });
+    auditLogModel.create.mockResolvedValue([{ _id: new Types.ObjectId() }]);
   });
 
   describe('suspend (ACC-15, ACC-16)', () => {
@@ -69,24 +74,34 @@ describe('AdminAccountsService', () => {
       expect(userModel.findOneAndUpdate).toHaveBeenCalledWith(
         { _id: accountId.toString(), status: UserStatus.ACTIVE },
         { $set: { status: UserStatus.SUSPENDED } },
-        { new: true },
+        { returnDocument: 'after', session },
       );
       expect(sessionsService.revokeAllForUser).toHaveBeenCalledWith(
         accountId,
         now,
+        undefined,
+        session,
       );
-      expect(auditLogModel.create).toHaveBeenCalledWith({
-        actorId: adminId,
-        action: AuditAction.ACCOUNT_SUSPENDED,
-        targetModel: 'User',
-        targetId: accountId,
-      });
+      expect(auditLogModel.create).toHaveBeenCalledWith(
+        [
+          {
+            actorId: adminId,
+            action: AuditAction.ACCOUNT_SUSPENDED,
+            targetModel: 'User',
+            targetId: accountId,
+          },
+        ],
+        { session },
+      );
       expect(notificationModel.create).toHaveBeenCalledWith(
-        expect.objectContaining({
-          recipientId: accountId,
-          type: NotificationType.ACCOUNT_STATUS_CHANGED,
-          subjectModel: 'User',
-        }),
+        [
+          expect.objectContaining({
+            recipientId: accountId,
+            type: NotificationType.ACCOUNT_STATUS_CHANGED,
+            subjectModel: 'User',
+          }),
+        ],
+        { session },
       );
     });
 
@@ -131,10 +146,11 @@ describe('AdminAccountsService', () => {
       expect(userModel.findOneAndUpdate).toHaveBeenCalledWith(
         { _id: accountId.toString(), status: UserStatus.SUSPENDED },
         { $set: { status: UserStatus.ACTIVE } },
-        { new: true },
+        { returnDocument: 'after', session },
       );
       expect(auditLogModel.create).toHaveBeenCalledWith(
-        expect.objectContaining({ action: AuditAction.ACCOUNT_REACTIVATED }),
+        [expect.objectContaining({ action: AuditAction.ACCOUNT_REACTIVATED })],
+        { session },
       );
       expect(notificationModel.create).toHaveBeenCalled();
     });
@@ -166,16 +182,22 @@ describe('AdminAccountsService', () => {
         accountId,
         'scrypt$temp',
         true,
+        session,
       );
       expect(sessionsService.revokeAllForUser).toHaveBeenCalledWith(
         accountId,
         now,
+        undefined,
+        session,
       );
       expect(auditLogModel.create).toHaveBeenCalledWith(
-        expect.objectContaining({
-          action: AuditAction.ACCOUNT_PASSWORD_RESET,
-          targetId: accountId,
-        }),
+        [
+          expect.objectContaining({
+            action: AuditAction.ACCOUNT_PASSWORD_RESET,
+            targetId: accountId,
+          }),
+        ],
+        { session },
       );
       expect(result.mustChangePassword).toBe(true);
     });

@@ -5,7 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model, Types } from 'mongoose';
+import { ClientSession, Model, Types } from 'mongoose';
 import { Currency } from '../reference-data/schemas/currency.schema';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { User, UserDocument, UserRole } from './schemas/user.schema';
@@ -126,6 +126,7 @@ export class UsersService {
     userId: Types.ObjectId,
     passwordHash: string,
     mustChangePassword: boolean,
+    session?: ClientSession,
   ): Promise<UserDocument | null> {
     return this.userModel
       .findByIdAndUpdate(
@@ -134,7 +135,7 @@ export class UsersService {
           $set: { passwordHash, mustChangePassword, failedLoginAttempts: 0 },
           $unset: { lockedUntil: 1 },
         },
-        { new: true },
+        { new: true, ...(session ? { session } : {}) },
       )
       .exec();
   }
