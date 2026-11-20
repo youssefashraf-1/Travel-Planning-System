@@ -56,6 +56,7 @@ describe('Itineraries and budgeting (ITN-01 to ITN-26, e2e)', () => {
     who?: string,
   ) => {
     const req = request(server())[method](`/api${path}`);
+    if (method === 'delete') req.send({ confirm: true });
     return who ? req.set('Cookie', cookies[who]) : req;
   };
 

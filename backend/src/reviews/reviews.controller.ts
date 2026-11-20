@@ -1,3 +1,4 @@
+import { ConfirmActionDto } from '../common/dto/confirm-action.dto';
 import {
   Body,
   Controller,
@@ -105,6 +106,7 @@ export class ReviewsController {
   remove(
     @CurrentUser() user: UserDocument,
     @Param('id') id: string,
+    @Body() _confirmation: ConfirmActionDto,
   ): Promise<void> {
     return this.reviews.remove(user, id);
   }

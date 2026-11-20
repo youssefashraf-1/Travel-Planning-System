@@ -1,6 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { IsInt, IsOptional, Min } from 'class-validator';
+import { IsInt, IsOptional, Max, Min } from 'class-validator';
 
 /** GEN-05: every list longer than 10 rows is paginated with page size 10. */
 export const PAGE_SIZE = 10;
@@ -12,6 +12,7 @@ export class PageQueryDto {
   @Type(() => Number)
   @IsInt()
   @Min(1)
+  @Max(Math.floor(Number.MAX_SAFE_INTEGER / PAGE_SIZE))
   page: number = 1;
 }
 

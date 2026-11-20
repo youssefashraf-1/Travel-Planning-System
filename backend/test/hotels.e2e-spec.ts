@@ -48,6 +48,7 @@ describe('Hotel management and reviews (HTL-01 to HTL-10, HTL-15, HTL-22 to HTL-
     who?: string,
   ) => {
     const req = request(server())[method](`/api${path}`);
+    if (method === 'delete') req.send({ confirm: true });
     return who ? req.set('Cookie', cookies[who]) : req;
   };
 
@@ -432,6 +433,11 @@ describe('Hotel management and reviews (HTL-01 to HTL-10, HTL-15, HTL-22 to HTL-
       await call('patch', path, 'moderator')
         .send({ isActive: false })
         .expect(409);
+      await request(server())
+        .delete(`/api${path}`)
+        .set('Cookie', cookies.moderator)
+        .send({ confirm: false })
+        .expect(400);
       await call('delete', path, 'moderator').expect(409);
 
       // Neighbouring dates are fine: the stay ends on day 23.

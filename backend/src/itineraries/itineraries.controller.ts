@@ -1,3 +1,4 @@
+import { ConfirmActionDto } from '../common/dto/confirm-action.dto';
 import {
   applyDecorators,
   Body,
@@ -215,13 +216,14 @@ export class ItinerariesController {
   @ApiOperation({
     summary: 'Delete an itinerary (ITN-01)',
     description:
-      'Ask the user to confirm first (GEN-03). It leaves public search; ' +
+      'Requires confirm:true (GEN-03). It leaves public search; ' +
       'clones made by others are not affected.',
   })
   @ApiNoContentResponse({ description: 'Deleted.' })
   remove(
     @CurrentUser() user: UserDocument,
     @Param('id') id: string,
+    @Body() _confirmation: ConfirmActionDto,
   ): Promise<void> {
     return this.itineraries.remove(user, id);
   }
@@ -287,7 +289,7 @@ export class ItinerariesController {
   @ApiOperation({
     summary: 'Delete a day (ITN-07)',
     description:
-      'Ask the user to confirm first (GEN-03). Later days renumber and ' +
+      'Requires confirm:true (GEN-03). Later days renumber and ' +
       'move one date earlier; budget totals follow.',
   })
   @ApiOkResponse({ type: ItineraryDetailsDto })
@@ -295,6 +297,7 @@ export class ItinerariesController {
     @CurrentUser() user: UserDocument,
     @Param('id') id: string,
     @Param('dayId') dayId: string,
+    @Body() _confirmation: ConfirmActionDto,
   ): Promise<ItineraryDetailsDto> {
     return this.itineraries.removeDay(user, id, dayId);
   }
@@ -471,6 +474,7 @@ export class ItineraryItemsController {
   removeActivity(
     @CurrentUser() user: UserDocument,
     @Param('id') id: string,
+    @Body() _confirmation: ConfirmActionDto,
   ): Promise<void> {
     return this.itineraries.removeActivity(user, id);
   }
@@ -516,6 +520,7 @@ export class ItineraryItemsController {
     @CurrentUser() user: UserDocument,
     @Param('id') id: string,
     @Param('imageId') imageId: string,
+    @Body() _confirmation: ConfirmActionDto,
   ): Promise<ItineraryDetailsDto> {
     return this.itineraries.removeImage(user, id, imageId);
   }
@@ -543,6 +548,7 @@ export class ItineraryItemsController {
   removeBudget(
     @CurrentUser() user: UserDocument,
     @Param('id') id: string,
+    @Body() _confirmation: ConfirmActionDto,
   ): Promise<void> {
     return this.itineraries.removeBudget(user, id);
   }
@@ -573,6 +579,7 @@ export class ItineraryItemsController {
   removeTransport(
     @CurrentUser() user: UserDocument,
     @Param('id') id: string,
+    @Body() _confirmation: ConfirmActionDto,
   ): Promise<void> {
     return this.itineraries.removeTransport(user, id);
   }
