@@ -7,11 +7,9 @@ import {
   IsNotEmpty,
   IsNumber,
   IsString,
-  IsUrl,
   Max,
   MaxLength,
   Min,
-  ValidateIf,
   ValidateNested,
 } from 'class-validator';
 
@@ -33,12 +31,6 @@ export class CreateAirlineDto {
   @IsNotEmpty()
   @MaxLength(20)
   code: string;
-
-  @ApiPropertyOptional({ example: 'https://example.com/logo.png' })
-  @ValidateIf((_dto, value) => value !== undefined)
-  @IsUrl({ protocols: ['http', 'https'], require_protocol: true })
-  @MaxLength(2048)
-  logoUrl?: string;
 }
 
 export class UpdateAirlineDto extends PartialType(CreateAirlineDto, {

@@ -1,6 +1,23 @@
+import { FileInterceptor } from '@nestjs/platform-express';
+import { UploadedFile, UseInterceptors } from '@nestjs/common';
+import {
+  ApiBody,
+  ApiConsumes,
+  ApiPayloadTooLargeResponse,
+} from '@nestjs/swagger';
+import {
+  MAX_IMAGE_BYTES,
+  type UploadedImage,
+} from '../common/uploads/image-uploads.service';
+import {
+  ProviderMediaService,
+  ProviderLogoDto,
+} from '../common/uploads/provider-media.service';
+import { RemoveProviderImageDto } from '../common/uploads/provider-media.dto';
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   Patch,
@@ -39,7 +56,10 @@ import {
 @ApiTags('Airlines')
 @Controller('airlines')
 export class AirlinesController {
-  constructor(private readonly airlines: AirlinesService) {}
+  constructor(
+    private readonly airlines: AirlinesService,
+    private readonly media: ProviderMediaService,
+  ) {}
 
   @Post()
   @UseGuards(JwtAuthGuard, RolesGuard)
@@ -104,5 +124,56 @@ export class AirlinesController {
   @ApiNotFoundResponse()
   cancellation(@Param('id') id: string, @Body() dto: CancellationPolicyDto) {
     return this.airlines.setCancellationPolicy(id, dto);
+  }
+
+  @Put(':id/logo')
+  @UseGuards(JwtAuthGuard, ProviderOwnerGuard)
+  @ManagesProvider(ProviderType.AIRLINE)
+  @ApiCookieAuth()
+  @ApiUnauthorizedResponse()
+  @ApiForbiddenResponse()
+  @ApiNotFoundResponse()
+  @UseInterceptors(
+    FileInterceptor('image', {
+      limits: { fileSize: MAX_IMAGE_BYTES, files: 1, fields: 0 },
+    }),
+  )
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['image'],
+      properties: { image: { type: 'string', format: 'binary' } },
+    },
+  })
+  @ApiOperation({
+    summary: 'Upload or replace my airline logo (FLT-01, GEN-08)',
+    description:
+      'One JPG/PNG up to 5 MB. Replaces the previous logo and removes its stored file.',
+  })
+  @ApiOkResponse({ type: ProviderLogoDto })
+  @ApiBadRequestResponse()
+  @ApiPayloadTooLargeResponse()
+  logo(
+    @Param('id') id: string,
+    @UploadedFile() file: UploadedImage | undefined,
+  ) {
+    return this.media.setLogo(id, file);
+  }
+
+  @Delete(':id/logo')
+  @UseGuards(JwtAuthGuard, ProviderOwnerGuard)
+  @ManagesProvider(ProviderType.AIRLINE)
+  @ApiCookieAuth()
+  @ApiUnauthorizedResponse()
+  @ApiForbiddenResponse()
+  @ApiNotFoundResponse()
+  @ApiOperation({
+    summary: 'Remove my airline logo (GEN-08)',
+    description: 'Requires confirm:true. Repeating removal is safe.',
+  })
+  @ApiOkResponse({ type: ProviderLogoDto })
+  removeLogo(@Param('id') id: string, @Body() _dto: RemoveProviderImageDto) {
+    return this.media.removeLogo(id);
   }
 }

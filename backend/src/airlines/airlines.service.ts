@@ -38,7 +38,7 @@ export class AirlinesService {
 
   update(id: string, dto: UpdateAirlineDto) {
     if (Object.keys(dto).length === 0)
-      throw new BadRequestException('Provide name, code or logoUrl.');
+      throw new BadRequestException('Provide name or code.');
     return this.saveChanges(id, Object.assign({}, dto));
   }
 

@@ -1,3 +1,19 @@
+import { FileInterceptor } from '@nestjs/platform-express';
+import { UploadedFile, UseInterceptors } from '@nestjs/common';
+import {
+  ApiBody,
+  ApiConsumes,
+  ApiPayloadTooLargeResponse,
+} from '@nestjs/swagger';
+import {
+  MAX_IMAGE_BYTES,
+  type UploadedImage,
+} from '../common/uploads/image-uploads.service';
+import {
+  ProviderMediaService,
+  ProviderPhotoDto,
+} from '../common/uploads/provider-media.service';
+import { RemoveProviderImageDto } from '../common/uploads/provider-media.dto';
 import {
   applyDecorators,
   Body,
@@ -82,6 +98,7 @@ export class HotelsController {
   constructor(
     private readonly hotels: HotelsService,
     private readonly rooms: RoomsService,
+    private readonly media: ProviderMediaService,
   ) {}
 
   @Post()
@@ -127,7 +144,7 @@ export class HotelsController {
     summary: "Edit my hotel's profile (HTL-01)",
     description:
       'Name, address, city and country, time zone, description, star ' +
-      'class, amenities and photo URLs. Send only what changes.',
+      'class and amenities. Upload photos through the separate photos endpoint.',
   })
   @ApiOkResponse({ type: HotelDto })
   @ApiBadRequestResponse({ description: 'Invalid field, city or country.' })
@@ -321,5 +338,52 @@ export class HotelsController {
     @Query() query: HotelReservationsQueryDto,
   ): Promise<HotelReservationListDto> {
     return this.hotels.reservations(id, query);
+  }
+
+  @Post(':id/photos')
+  @HotelModerator()
+  @UseInterceptors(
+    FileInterceptor('image', {
+      limits: { fileSize: MAX_IMAGE_BYTES, files: 1, fields: 0 },
+    }),
+  )
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['image'],
+      properties: { image: { type: 'string', format: 'binary' } },
+    },
+  })
+  @ApiOperation({
+    summary: 'Upload a hotel photo (HTL-01, GEN-08)',
+    description:
+      'Own moderator only. JPG/PNG up to 5 MB; five photos maximum, including simultaneous uploads. Returns photo ids and URLs.',
+  })
+  @ApiCreatedResponse({ type: [ProviderPhotoDto] })
+  @ApiBadRequestResponse()
+  @ApiConflictResponse({ description: 'Already five photos or hotel changed.' })
+  @ApiPayloadTooLargeResponse()
+  photo(
+    @Param('id') id: string,
+    @UploadedFile() file: UploadedImage | undefined,
+  ) {
+    return this.media.addPhoto(id, file);
+  }
+
+  @Delete(':id/photos/:photoId')
+  @HotelModerator()
+  @ApiOperation({
+    summary: 'Remove a hotel photo (HTL-01, GEN-08)',
+    description:
+      'Own moderator only; requires confirm:true. Removes the stored file and returns remaining photos.',
+  })
+  @ApiOkResponse({ type: [ProviderPhotoDto] })
+  removePhoto(
+    @Param('id') id: string,
+    @Param('photoId') photoId: string,
+    @Body() _dto: RemoveProviderImageDto,
+  ) {
+    return this.media.removePhoto(id, photoId);
   }
 }

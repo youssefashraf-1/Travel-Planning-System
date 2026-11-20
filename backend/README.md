@@ -124,3 +124,29 @@ Nest is an MIT-licensed open source project. It can grow thanks to the sponsors 
 ## License
 
 Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+
+
+## Notifications and provider images
+
+Phase 12 is complete for the mandatory backend scope. See
+[the Phase 12 checklist](../docs/requirements/phase12-progress.md).
+
+After logging in through Swagger, `GET /api/notifications` shows your own inbox
+and unread count. Use `?unread=true` for unread items and `?page=2` for the next
+page. `PATCH /api/notifications/:id/read` marks one item read;
+`PATCH /api/notifications/read-all` marks your unread items read. Neither PATCH
+needs a body. Merely listing notifications leaves them unread.
+
+The assigned airline moderator uploads a logo with `PUT /api/airlines/:id/logo`.
+The assigned hotel moderator uploads photos with `POST /api/hotels/:id/photos`.
+In Swagger, click **Try it out**, set the provider id, choose a file in the
+`image` field, then **Execute**. Each request accepts one JPG/PNG up to 5 MB.
+An airline has one logo; a hotel has at most five photos. Hotel details include
+photo ids for `DELETE /api/hotels/:id/photos/:photoId`; logo removal uses
+`DELETE /api/airlines/:id/logo`. Both DELETE requests require
+`{ "confirm": true }`.
+
+Create/edit profile JSON no longer accepts `logoUrl` or `photoUrls`. Use actual
+uploads instead; returned URLs are for displaying images. Existing stored URLs
+remain readable. Keep `UPLOADS_DIR` (default `backend/uploads`) across restarts
+and deployments to retain files. No additional secret is needed.

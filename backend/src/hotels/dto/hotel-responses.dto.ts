@@ -1,3 +1,4 @@
+import { ProviderPhotoDto } from '../../common/uploads/provider-media.service';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { BookingStatus } from '../../common/booking-status';
 import { PageInfoDto } from '../../common/pagination';
@@ -15,6 +16,7 @@ export class HotelPolicyViewDto {
 }
 
 export class HotelDto {
+  @ApiProperty({ type: [ProviderPhotoDto] }) photos: ProviderPhotoDto[];
   @ApiProperty() id: string;
   @ApiProperty({ example: 'Nile View Hotel' }) name: string;
   @ApiProperty() address: string;
