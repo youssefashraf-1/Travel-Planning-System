@@ -11,7 +11,7 @@ import { BlogAuthorPageDto } from './dto/blog-author.dto';
 import { AuthorPageQueryDto } from './dto/blog-community.dto';
 
 @ApiTags('Blog authors')
-@Controller('blog/authors')
+@Controller('authors')
 export class BlogAuthorsController {
   constructor(private readonly authors: BlogAuthorsService) {}
 

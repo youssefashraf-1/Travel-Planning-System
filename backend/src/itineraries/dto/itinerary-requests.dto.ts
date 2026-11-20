@@ -209,7 +209,6 @@ export class UpdateTransportCostDto extends PartialType(
 /** ITN-18: the display currency for budgets. */
 export class CurrencyQueryDto {
   @ApiPropertyOptional({
-    example: 'USD',
     description:
       'Defaults to your preferred currency (ACC-09), or EGP when none is set.',
   })
@@ -223,7 +222,6 @@ export class CurrencyQueryDto {
 export class PublicSearchQueryDto extends PageQueryDto {
   @ApiPropertyOptional({
     description: 'Matches the title, a country or a city (name or code).',
-    example: 'cairo',
   })
   @IsOptional()
   @Transform(trim)

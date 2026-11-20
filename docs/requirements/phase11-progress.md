@@ -1,5 +1,7 @@
 # Phase 11 — Blog & Community
 
+> **Paths (Phase 13):** the blog endpoints are documented at `/api/posts`, `/api/comments/:id`, `/api/authors/:id` and `/api/tags/:tag/posts`, as in the project description. The `/api/blog/...` paths used below still work.
+
 **Status: all mandatory Phase 11 backend functionality is implemented and verified.**
 Source: official project workbook, checked 20 November 2026. Group A was merged
 through PR #27; this document describes the final combined implementation.

@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -16,6 +17,7 @@ import {
 import { FileInterceptor } from '@nestjs/platform-express';
 import {
   ApiBadRequestResponse,
+  ApiParam,
   ApiBody,
   ApiConflictResponse,
   ApiConsumes,
@@ -62,7 +64,7 @@ import {
 @ApiConflictResponse({
   description: 'Post changed concurrently. Reload and retry.',
 })
-@Controller('blog/posts')
+@Controller('posts')
 export class BlogPostsController {
   constructor(private readonly posts: BlogPostsService) {}
 
@@ -212,5 +214,37 @@ export class BlogPostsController {
     @Body() _dto: DeleteBlogPostDto,
   ) {
     return this.posts.removeImage(user, id, imageId);
+  }
+}
+
+/** BLG-08: a clicked tag lists its published posts (GET /api/tags/:tag/posts). */
+@ApiTags('Blog posts')
+@Controller('tags')
+export class BlogTagsController {
+  constructor(private readonly posts: BlogPostsService) {}
+
+  @Get(':tag/posts')
+  @ApiParam({
+    name: 'tag',
+    example: 'egypt',
+    description: 'Up to 30 characters.',
+  })
+  @ApiOperation({
+    summary: 'Published posts with a tag (BLG-08)',
+    description:
+      'Public. Same as GET /api/posts?tag=…: ten per page, newest first.',
+  })
+  @ApiOkResponse({ type: BlogPostListDto })
+  @ApiBadRequestResponse({ description: 'Empty or longer than 30 characters.' })
+  byTag(@Param('tag') tag: string, @Query() query: PageQueryDto) {
+    const normalized = tag.trim().toLowerCase();
+    if (!normalized || normalized.length > 30)
+      throw new BadRequestException('tag must be 1 to 30 characters.');
+    return this.posts.listPublished(
+      Object.assign(new PublishedPostsQueryDto(), {
+        page: query.page ?? 1,
+        tag: normalized,
+      }),
+    );
   }
 }

@@ -27,7 +27,6 @@ export enum HotelSortOrder {
 /** HTL-11, HTL-12: where, when, for how many, and how to filter and sort. */
 export class SearchHotelsQueryDto extends PageQueryDto {
   @ApiPropertyOptional({
-    example: 'cairo',
     description: 'A seeded city id. Send cityId or countryCode.',
   })
   @IsOptional()

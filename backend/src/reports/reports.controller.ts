@@ -111,6 +111,21 @@ export class ContentModerationController {
     return this.reports.list(query);
   }
 
+  @Patch('reports/:id')
+  @ApiOperation({
+    summary: 'Resolve a report (GEN-10, GEN-07)',
+    description:
+      'The path listed in the project description; same as POST /api/admin/reports/:id/resolve. Dismiss, hide or delete; requires confirm:true.',
+  })
+  @ApiOkResponse({ type: ReportDto })
+  resolveReport(
+    @CurrentUser() user: UserDocument,
+    @Param('id') id: string,
+    @Body() dto: ResolveReportDto,
+  ) {
+    return this.reports.resolve(user, id, dto.action);
+  }
+
   @Post('reports/:id/resolve')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({

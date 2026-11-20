@@ -17,7 +17,6 @@ import {
   ApiConflictResponse,
   ApiCookieAuth,
   ApiCreatedResponse,
-  ApiExcludeEndpoint,
   ApiForbiddenResponse,
   ApiNotFoundResponse,
   ApiOkResponse,
@@ -139,7 +138,20 @@ export class PaymentsController {
 
   @Post('payments/webhook')
   @HttpCode(HttpStatus.OK)
-  @ApiExcludeEndpoint()
+  @ApiOperation({
+    summary: 'Stripe webhook (PAY-01, PAY-03)',
+    description:
+      'Called by Stripe, not by users. The Stripe-Signature header is ' +
+      'checked against the raw body with STRIPE_WEBHOOK_SECRET; ' +
+      'payment_intent.* events confirm bookings, refund.* events update ' +
+      'refunds. Requests without a valid signature get 400.',
+  })
+  @ApiOkResponse({ description: 'Event processed: { received: true }.' })
+  @ApiBadRequestResponse({ description: 'Missing or invalid signature.' })
+  @ApiResponse({
+    status: HttpStatus.SERVICE_UNAVAILABLE,
+    description: 'STRIPE_WEBHOOK_SECRET is not configured.',
+  })
   webhook(
     @Req() request: RawBodyRequest<Request>,
     @Headers('stripe-signature') signature: string | undefined,

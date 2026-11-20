@@ -25,16 +25,14 @@ export enum AdminBookingType {
 
 export class AdminDateRangeDto extends PageQueryDto {
   @ApiPropertyOptional({
-    example: '2026-12-01',
-    description: 'Inclusive YYYY-MM-DD start date.',
+    description: 'Inclusive YYYY-MM-DD start date, for example 2026-12-01.',
   })
   @ValidateIf((_object, value: unknown) => value !== undefined)
   @Validate(IsCalendarDateConstraint)
   fromDate?: string;
 
   @ApiPropertyOptional({
-    example: '2026-12-31',
-    description: 'Inclusive YYYY-MM-DD end date.',
+    description: 'Inclusive YYYY-MM-DD end date, for example 2026-12-31.',
   })
   @ValidateIf((_object, value: unknown) => value !== undefined)
   @Validate(IsCalendarDateConstraint)

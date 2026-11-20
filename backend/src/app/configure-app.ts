@@ -22,6 +22,14 @@ export const API_DOCS_PATH = `${API_PREFIX}/docs`;
  * server-controlled values such as a user's role.
  */
 export function configureApp(app: INestApplication): void {
+  // Blog routes follow the project description (/api/posts, /api/comments,
+  // /api/authors). The earlier /api/blog/... addresses keep working.
+  app.use((req: { url: string }, _res: unknown, next: () => void) => {
+    if (req.url.startsWith(`/${API_PREFIX}/blog/`))
+      req.url = `/${API_PREFIX}/${req.url.slice(API_PREFIX.length + 7)}`;
+    next();
+  });
+
   // GEN-08: uploaded images are served by URL. nosniff stops browsers from
   // treating an image as anything else.
   (app as NestExpressApplication).useStaticAssets(uploadsDirectory(), {
