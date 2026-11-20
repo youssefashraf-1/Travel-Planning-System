@@ -422,3 +422,25 @@ legacy metadata conservatively. Full local MongoDB tests and original audit
 probes verify the fixes with a fake Stripe gateway. Existing credentials and
 shared Atlas records were preserved.
 ================================================
+
+================================================
+Date: 2026-11-20
+Requested commit identity: ahmedsalahh06
+Tool: Codex
+Related requirements: BLG-01 to BLG-04 (core posts), BLG-08, BLG-10,
+ACC-12, GEN-03, GEN-05, GEN-08, GEN-10, GEN-13
+Prompt summary:
+Start Phase 11 Group A. The user confirmed the scope as post creation,
+drafts/publishing, viewing, editing and deletion, leaving comments, likes,
+search and moderation for later groups. Use the repository-local commit
+identity configured at the user's request.
+How the output was used:
+Codex checked the current official workbook, connected the existing Blog
+schemas to guarded owner APIs and public published-post reads, added tags
+and image uploads required by the post contract, documented the endpoints,
+and added isolated database regression coverage for validation, ownership,
+visibility, pagination, publishing, deletion and concurrent uploads.
+The progress document distinguishes completed core post functionality from
+remaining comment/search/author-page/moderation integration. No frontend
+or real team database records are added by this implementation's tests.
+================================================

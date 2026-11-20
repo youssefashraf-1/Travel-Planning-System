@@ -8,7 +8,7 @@ export enum BlogPostStatus {
   PUBLISHED = 'published',
 }
 
-@Schema({ timestamps: true })
+@Schema({ timestamps: true, optimisticConcurrency: true })
 export class BlogPost {
   @Prop({ type: MongooseSchema.Types.ObjectId, ref: User.name, required: true })
   authorId: Types.ObjectId;
