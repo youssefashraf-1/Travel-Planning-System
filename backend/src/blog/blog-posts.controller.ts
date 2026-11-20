@@ -1,0 +1,205 @@
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Param,
+  Patch,
+  Post,
+  Query,
+  UploadedFile,
+  UseGuards,
+  UseInterceptors,
+} from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import {
+  ApiBadRequestResponse,
+  ApiBody,
+  ApiConflictResponse,
+  ApiConsumes,
+  ApiCookieAuth,
+  ApiCreatedResponse,
+  ApiForbiddenResponse,
+  ApiNoContentResponse,
+  ApiNotFoundResponse,
+  ApiOkResponse,
+  ApiOperation,
+  ApiPayloadTooLargeResponse,
+  ApiTags,
+  ApiUnauthorizedResponse,
+} from '@nestjs/swagger';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { PageQueryDto } from '../common/pagination';
+import {
+  MAX_IMAGE_BYTES,
+  type UploadedImage,
+} from '../common/uploads/image-uploads.service';
+import type { UserDocument } from '../users/schemas/user.schema';
+import { BlogPostsService } from './blog-posts.service';
+import {
+  CreateBlogPostDto,
+  DeleteBlogPostDto,
+  PublishedPostsQueryDto,
+  UpdateBlogPostDto,
+} from './dto/blog-post-requests.dto';
+import {
+  BlogPostDetailsDto,
+  BlogPostListDto,
+} from './dto/blog-post-responses.dto';
+
+@ApiTags('Blog posts')
+@ApiBadRequestResponse({
+  description: 'Invalid fields or missing confirmation.',
+})
+@ApiNotFoundResponse({ description: 'Post not found or not accessible.' })
+@ApiUnauthorizedResponse({ description: 'Log in before managing your posts.' })
+@ApiForbiddenResponse({
+  description: 'Account inactive or temporary password change required.',
+})
+@ApiConflictResponse({
+  description: 'Post changed concurrently. Reload and retry.',
+})
+@Controller('blog/posts')
+export class BlogPostsController {
+  constructor(private readonly posts: BlogPostsService) {}
+
+  @Get()
+  @ApiOperation({
+    summary: 'Browse published posts (BLG-02)',
+    description:
+      'Public. Ten per page, newest first; optional exact tag filter. Drafts, hidden posts and deactivated authors are excluded.',
+  })
+  @ApiOkResponse({ type: BlogPostListDto })
+  list(@Query() query: PublishedPostsQueryDto) {
+    return this.posts.listPublished(query);
+  }
+
+  // Static routes precede :id, so mine cannot be mistaken for a public post id.
+  @Get('mine')
+  @UseGuards(JwtAuthGuard)
+  @ApiCookieAuth()
+  @ApiOperation({ summary: 'List my posts, including drafts (BLG-03)' })
+  @ApiOkResponse({ type: BlogPostListDto })
+  mine(@CurrentUser() user: UserDocument, @Query() query: PageQueryDto) {
+    return this.posts.listMine(user, query);
+  }
+
+  @Get('mine/:id')
+  @UseGuards(JwtAuthGuard)
+  @ApiCookieAuth()
+  @ApiOperation({ summary: 'Read my post, including a draft (BLG-03, BLG-04)' })
+  @ApiOkResponse({ type: BlogPostDetailsDto })
+  own(@CurrentUser() user: UserDocument, @Param('id') id: string) {
+    return this.posts.ownDetails(user, id);
+  }
+
+  @Get(':id')
+  @ApiOperation({
+    summary: 'Read a published post (BLG-02)',
+    description:
+      'Public. Core post content and interaction counts. Comment interaction endpoints follow in the next group.',
+  })
+  @ApiOkResponse({ type: BlogPostDetailsDto })
+  published(@Param('id') id: string) {
+    return this.posts.publishedDetails(id);
+  }
+
+  @Post()
+  @UseGuards(JwtAuthGuard)
+  @ApiCookieAuth()
+  @ApiOperation({
+    summary: 'Create a draft or published post (BLG-01)',
+    description:
+      'Any active registered user. Draft by default; server sets author and publication date. Optional up to five tags. Upload images separately after creation.',
+  })
+  @ApiCreatedResponse({ type: BlogPostDetailsDto })
+  create(@CurrentUser() user: UserDocument, @Body() dto: CreateBlogPostDto) {
+    return this.posts.create(user, dto);
+  }
+
+  @Patch(':id')
+  @UseGuards(JwtAuthGuard)
+  @ApiCookieAuth()
+  @ApiOperation({
+    summary: 'Edit my post or change draft/published status (BLG-04, BLG-08)',
+    description:
+      'Author only. Returning to draft removes it from public access. Republishing assigns a new publication date. Editing cannot clear moderation hiding.',
+  })
+  @ApiOkResponse({ type: BlogPostDetailsDto })
+  update(
+    @CurrentUser() user: UserDocument,
+    @Param('id') id: string,
+    @Body() dto: UpdateBlogPostDto,
+  ) {
+    return this.posts.update(user, id, dto);
+  }
+
+  @Delete(':id')
+  @UseGuards(JwtAuthGuard)
+  @ApiCookieAuth()
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({
+    summary: 'Delete my post after confirmation (BLG-04)',
+    description:
+      'Author only, requires confirm:true. Also removes its images and dependent comments/likes.',
+  })
+  @ApiNoContentResponse({ description: 'Post deleted.' })
+  remove(
+    @CurrentUser() user: UserDocument,
+    @Param('id') id: string,
+    @Body() _dto: DeleteBlogPostDto,
+  ) {
+    return this.posts.remove(user, id);
+  }
+
+  @Post(':id/images')
+  @UseGuards(JwtAuthGuard)
+  @ApiCookieAuth()
+  @UseInterceptors(
+    FileInterceptor('image', {
+      limits: { fileSize: MAX_IMAGE_BYTES, files: 1 },
+    }),
+  )
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['image'],
+      properties: { image: { type: 'string', format: 'binary' } },
+    },
+  })
+  @ApiOperation({
+    summary: 'Attach a post image (BLG-10, GEN-08)',
+    description:
+      'Author only. Upload one JPG/PNG up to 5 MB; at most five images per post.',
+  })
+  @ApiCreatedResponse({ type: BlogPostDetailsDto })
+  @ApiPayloadTooLargeResponse({ description: 'Image exceeds 5 MB.' })
+  image(
+    @CurrentUser() user: UserDocument,
+    @Param('id') id: string,
+    @UploadedFile() file: UploadedImage | undefined,
+  ) {
+    return this.posts.addImage(user, id, file);
+  }
+
+  @Delete(':id/images/:imageId')
+  @UseGuards(JwtAuthGuard)
+  @ApiCookieAuth()
+  @ApiOperation({
+    summary: 'Remove my post image (BLG-10)',
+    description: 'Author only; requires confirm:true (GEN-03).',
+  })
+  @ApiOkResponse({ type: BlogPostDetailsDto })
+  removeImage(
+    @CurrentUser() user: UserDocument,
+    @Param('id') id: string,
+    @Param('imageId') imageId: string,
+    @Body() _dto: DeleteBlogPostDto,
+  ) {
+    return this.posts.removeImage(user, id, imageId);
+  }
+}
