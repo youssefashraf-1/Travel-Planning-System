@@ -467,3 +467,24 @@ moderation rollback and cleanup. Full unit/e2e suites and Swagger checks passed.
 The optional BLG-13 attachment feature remains outside mandatory scope; no
 frontend pages or shared team database records were created by these tests.
 ================================================
+
+================================================
+Date: 2026-11-20
+Requested commit identity: hamzamohamed-tech
+Tool: Codex
+Related requirements: ACC-15, ACC-17, GEN-01, GEN-05, GEN-07, GEN-13;
+existing account management ACC-13, ACC-14, ACC-16 and ACC-18 reviewed.
+Prompt summary:
+Implement Phase 12 Group A and credit future project commits to the requested
+repository-local identity. User confirmed provider activation, all-booking
+viewing and audit history, with notification reads and remaining uploads later.
+How the output was used:
+Codex added guarded provider controls, combined read-only booking summaries
+and audit history. Provider status, pending holds, audit and notifications are
+transactional; new holds serialize against deactivation and existing confirmed
+bookings remain valid. Late captured payments use the existing refund queue.
+Twenty new API regression cases cover permissions, filters, privacy, pagination,
+rollback, concurrency and payment lifecycle integration. Existing account tests
+are reused. Validation uses an isolated local database and fake payment state.
+No frontend or shared team database records were created by these tests.
+================================================
