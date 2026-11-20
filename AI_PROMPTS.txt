@@ -1,0 +1,558 @@
+AI ASSISTANCE LOG
+
+This log records material assistance from Codex for the work described below.
+Contributors record their other uses of AI separately.
+
+================================================
+Date: 2026-11-05
+Student: Youssef Ashraf
+Tool: OpenAI Codex
+Related Requirement: Repository structure and workflow (project description,
+Sections 10 and 11)
+Prompt / chronological summary:
+Requested that the existing Travel-Planning-System Git repository be reorganized
+so the project root contains backend/ and an empty frontend/ placeholder,
+preserving backend files, local .env, history, remote, and branch.
+Follow-up prompts requested the essential setup, publishing the reorganization
+to GitHub, and creating develop with a project-structure walkthrough.
+How the output was used:
+Codex moved Git metadata to the parent folder, preserved the existing backend,
+added root setup documentation, secret-ignore rules, a credential-free backend
+.env.example, and frontend/.gitkeep. It verified build, lint, and the existing
+unit tests, committed and pushed the reorganization to main, then created and
+published develop from that commit. The conversation also explained controller,
+service, module, schema, and test responsibilities. This was solution-led setup
+with guided explanations; it is not evidence of independent implementation.
+================================================
+
+================================================
+Date: 2026-11-18
+Student: Youssef Ashraf
+Tool: OpenAI Codex
+Related requirements: FLT-01, FLT-08, FLT-09, ACC-15 and GEN-08
+Prompt summary:
+Continue Phase 2 in checklist order by designing the Airline schema.
+How the output was used:
+Codex added the Airline model and NestJS module, modeled baggage and
+cancellation policies, and added model validation tests and design notes.
+================================================
+
+================================================
+Date: 2026-11-05
+Student: Youssef Ashraf
+Tool: OpenAI Codex
+Related Requirement: Feature-based backend modules (project description,
+Section 1.1); AI disclosure (Section 11)
+Prompt:
+"ok , organize all folders so eahc feature is a folder containing all related
+files to it, then update that to github"
+How the output was used:
+Codex grouped the existing application module, controller, service, and unit
+test under backend/src/app/, retaining backend/src/users/ as the user feature
+with its own schema and tests. It updated the entry-point, root-module, and
+end-to-end-test imports and documented the folder convention. It created this
+log and prepared the change on a refactor branch for a pull request into
+develop. No new business features were implemented by this reorganization.
+This was solution-led implementation. The student must review and understand
+the changes before integration, as required by the project description.
+================================================
+
+================================================
+Date: 2026-11-18
+Student: Youssef Ashraf
+Tool: OpenAI Codex
+Related requirements: ACC-01, ACC-04, ACC-05, ACC-06, ACC-07a, ACC-09,
+ACC-12 through ACC-16, ACC-19, GEN-13 and ITN-18
+Prompt summary:
+Continue with Phase 2, Step 2 after reviewing the official workbook.
+How the output was used:
+Codex expanded the Mongoose User schema, added tests for role and provider
+validation and compatibility with existing accounts, and documented moderator
+assignments and the planned session model.
+================================================
+
+================================================
+Date: 2026-11-18
+Student: Youssef Ashraf
+Tool: OpenAI Codex
+Related requirements: FLT-02, FLT-03, GEN-06 and GEN-12
+Prompt summary:
+Start the Airport schema in checklist order.
+How the output was used:
+Codex checked the official airport reference columns, added the Airport
+schema and NestJS module, tested code and time zone validation, and
+documented the mapping for the later data seed.
+================================================
+
+================================================
+Date: 2026-11-18
+Student: Youssef Ashraf
+Tool: OpenAI Codex
+Related requirements: FLT-03, FLT-05, FLT-06, FLT-11 and FLT-30
+Prompt summary:
+Merge the Airport schema into develop and start the Flight schema.
+How the output was used:
+Codex added the Flight model and NestJS module, modeled the airline and
+airport references, added validation and the local-date uniqueness index,
+and documented and tested the schedule rules.
+================================================
+
+================================================
+Date: 2026-11-18
+Student: Youssef Ashraf
+Tool: OpenAI Codex
+Related requirements: FLT-04, FLT-05, FLT-12, FLT-19, FLT-21 through FLT-26,
+FLT-29, PAY-02 and GEN-11
+Prompt summary:
+Merge the Flight schema and finish Cabin Inventory, Flight Booking and
+Passenger schemas, with automatic merges into develop after verification.
+How the output was used:
+Codex implemented the three schemas, connected their NestJS modules,
+added validation tests and documented how the data supports seat holds,
+round-trip pricing, policy acceptance and the booking lifecycle.
+================================================
+
+================================================
+Date: 2026-11-18
+Student: Youssef Ashraf
+Tool: OpenAI Codex
+Related requirements: HTL-01 through HTL-24, PAY-01 through PAY-04,
+ITN-01 through ITN-26, BLG-01 through BLG-12 and GEN-08 through GEN-12,
+where applicable to the data models.
+Prompt:
+Finish all schemas through Blog Post, Comment and Like.
+How the output was used:
+Codex used the official workbook to model hotel profiles, rooms,
+availability, reservations, reviews, payments, refunds, itineraries,
+day activities and costs, and blog posts, comments and likes. It registered
+the top-level models with NestJS, documented model relationships and verified
+schema validation.
+================================================
+
+================================================
+Date: 2026-11-18
+Student: Youssef Ashraf
+Tool: OpenAI Codex
+Related requirements: GEN-01, GEN-07, GEN-09, GEN-10 and ACC-15
+Prompt:
+Finish the supporting schemas for notifications, reports, and audit logs.
+How the output was used:
+Codex designed the three models, registered them with NestJS, and added
+validation tests for notification subjects, report resolution, and audit
+history. The design notes document the indexes and later service rules.
+================================================
+
+================================================
+Date: 2026-11-18
+Student: Youssef Ashraf
+Tool: OpenAI Codex
+Related requirements: GEN-12, FLT-02, FLT-11, ACC-13, ACC-14 and ITN-18
+Prompt:
+Finish the rest of Phase 2.
+How the output was used:
+Codex reviewed collection relationships and indexes, linked the official
+reference records, added the repeatable seed and exchange-rate cache model,
+and verified seeding, references and uniqueness in local MongoDB.
+================================================
+
+================================================
+Date: 2026-11-18
+Student: MohamedShabrawy16003169
+Tool: Claude Code (Claude Opus 5.5)
+Related requirements: ACC-01, ACC-04 and GEN-13
+Prompt summary:
+Start Phase 3 by implementing traveler registration at
+POST /api/auth/register with backend validation, salted password hashing,
+server-assigned traveler role, recorded terms/privacy consent, duplicate
+email handling, Swagger documentation and tests.
+How the output was used:
+Claude added the Auth feature (controller, service, register DTO and a
+scrypt password hasher), implemented user creation and lookup in
+UsersService, added the /api prefix, request validation and Swagger at
+/api/docs, and wrote unit and end-to-end tests. End-to-end tests now run
+only against a separate test database set by MONGODB_TEST_URI. The student
+reviewed the changes and verification results before merging.
+================================================
+
+================================================
+Date: 2026-11-19
+Student: MohamedShabrawy16003169
+Tool: Claude Code (Claude Opus 5.5)
+Related requirements: ACC-04, ACC-05
+Prompt summary:
+Implement Phase 3 checklist items 5 and 6: login and JWT authentication.
+How the output was used:
+Claude added POST /api/auth/login, which checks the password, returns the
+same error for unknown emails and wrong passwords, locks an account for 15
+minutes after five consecutive failures (counted atomically in MongoDB),
+resets the counter after success and refuses suspended or deactivated
+accounts. It issues a signed JWT in an HttpOnly, Secure, SameSite=Strict
+cookie and adds a reusable JwtAuthGuard and @CurrentUser() decorator.
+Unit and end-to-end tests cover these rules. The student reviewed the
+changes and verification results before merging.
+================================================
+
+================================================
+Date: 2026-11-19
+Student: MohamedShabrawy16003169
+Tool: Claude Code (Claude Opus 5.5)
+Related requirements: ACC-06, ACC-19
+Prompt summary:
+Finish Phase 3 checklist items 7, 8 and 9: secure HttpOnly cookies,
+logout and session expiry.
+How the output was used:
+Claude added a server-side Session model following the team's account
+design notes, a refresh-token cookie with one-time rotation at
+POST /api/auth/refresh, logout at POST /api/auth/logout that revokes the
+session before clearing both cookies, and a 30-minute inactivity window
+that every protected request renews. Unit and end-to-end tests cover
+expiry, rotation, logout and multiple browsers. The student reviewed the
+changes and verification results before merging.
+================================================
+
+================================================
+Date: 2026-11-19
+Student: MohamedShabrawy16003169
+Tool: Claude Code (Claude Opus 5.5)
+Related requirements: ACC-09, ACC-11, ACC-19
+Prompt summary:
+Implement Phase 3 checklist items 10 and 11: the current-user endpoint and
+profile viewing and updating.
+How the output was used:
+Claude read ACC-09, ACC-11 and ACC-19 from the official workbook and added
+GET /api/auth/me, GET /api/users/me and PATCH /api/users/me. Profile edits
+cover name, phone and preferred currency, check the currency against the
+seeded list and save nothing unless every field is valid. Email, role and
+status cannot be changed. Unit and end-to-end tests cover these rules. The
+student reviewed the changes and verification results before merging.
+================================================
+
+================================================
+Date: 2026-11-19
+Student: Youssef Ashraf
+Tool: Codex
+Related requirements: FLT-01, FLT-02, FLT-08, FLT-09, GEN-05
+Prompt summary:
+Update local VS Code copies from the teammate's work, review the handoff and
+complete the first two Phase 5 groups in order.
+How the output was used:
+Codex inspected and tested the latest develop account/authorization changes,
+then implemented airline profile management, provider-only policy updates and
+read-only paginated airport retrieval. Added DTOs, Swagger documentation,
+service tests and isolated local-database API tests. Existing credentials,
+authentication code and schemas were preserved.
+================================================
+
+================================================
+Date: 2026-11-19
+Student: Youssef Ashraf
+Tool: Codex
+Related requirements: FLT-03, FLT-04, FLT-30, GEN-06
+Prompt summary:
+Complete the second Phase 5 group from the teammate handoff: creating
+flights and cabins, with correct airport-local times and status rules.
+How the output was used:
+Codex added moderator-only flight/cabin creation, local-to-UTC conversion,
+validation and unique-index conflict handling, departure status updates,
+Swagger DTOs and tests. Verified DST gaps/overlaps, date rollover, competing
+duplicate requests, roles, provider ownership and safe initial inventory.
+A browser Swagger check used an isolated local test database and confirmed
+login, flight/cabin creation and duplicate rejection. Existing account code,
+schemas, credentials and shared Atlas data were preserved.
+================================================
+
+================================================
+Date: 2026-11-19
+Student: Youssef Ashraf
+Tool: Codex
+Related requirements: FLT-11, FLT-12 (search), FLT-15, FLT-17, FLT-30, GEN-05, GEN-06
+Prompt summary:
+Continue with the next Phase 5 group: flight searching and details, including
+round trips, passenger types, cabin/price filtering, sorting and pagination.
+How the output was used:
+Codex checked the live workbook and added public search/detail endpoints,
+validated query DTOs and documented responses. Search joins existing airline,
+airport and inventory data, filters active scheduled future flights with
+sufficient seats, and returns matching cabins and independent leg pages.
+Added unit and disposable local MongoDB end-to-end tests; checked public
+search/details and invalid price ranges in browser Swagger. Booking totals,
+passenger birth-date validation and inventory holds remain Phase 6 work.
+================================================
+
+================================================
+Date: 2026-11-19
+Student: Youssef Ashraf
+Tool: Codex
+Related requirements: FLT-04, FLT-05, FLT-06, FLT-29, FLT-30; PAY-03 handoff
+Prompt summary:
+Finalize Phase 5 by implementing remaining flight/cabin edits, cancellation,
+moderator booking/passenger views, CSV export and complete API verification.
+How the output was used:
+Codex implemented transaction-protected flight/cabin mutation and cancellation,
+full-booking inventory release, notifications and pending full refund records.
+Stripe refund processing is explicitly deferred to Phase 9. Added moderator-only
+paginated booking views and CSV exports with private data omitted and formula
+escaping. Tested rollback, simultaneous requests, infant seat counts, permissions,
+capacity races and API validation on an isolated local MongoDB replica set.
+Verified the new endpoints in browser Swagger and documented the Phase 6 flight
+transaction fence and Phase 9 integration requirements. Credentials and shared
+Atlas data were preserved.
+================================================
+
+================================================
+Date: 2026-11-19
+Student: MohamedShabrawy16003169
+Tool: Claude Code (Claude Opus 5.5)
+Related requirements: FLT-12, FLT-19, FLT-21, FLT-22, FLT-23, FLT-25,
+FLT-26, GEN-11, ACC-11
+Prompt summary:
+Start and finish Phase 6: flight booking and inventory holds, following the
+Phase 5 transaction contract. The student chose EGP as the platform currency.
+How the output was used:
+Claude added the price summary, 10-minute seat holds made in one transaction
+with conditional seat updates, hold expiry, confirmation for the payment
+service to call, completed status, the traveler's grouped booking lists and
+details, cancellation with tiered refunds recorded as pending, and e-ticket
+PDFs. Tests cover passenger types, baggage, round trips, permissions,
+ownership, expiry and 8 simultaneous holds on a 3-seat cabin. The student
+reviewed the results and a browser Swagger check before merging.
+================================================
+
+================================================
+Date: 2026-11-19
+Student: MohamedShabrawy16003169
+Tool: Claude Code (Claude Opus 5.5)
+Related requirements: HTL-01 to HTL-10, HTL-15, HTL-22, HTL-23, HTL-24,
+GEN-11, ACC-12
+Prompt summary:
+Finish Phase 7: hotel management, rooms and availability, the moderator
+calendar and reservations view, and reviews with eligibility.
+How the output was used:
+Claude added hotel profiles and policies, rooms with labels unique per
+hotel, bookable and blocked date ranges that cannot override confirmed or
+held reservations, room deactivation and deletion rules, the per-day room
+calendar, public free-room listings with stay prices, completion of
+finished stays, and one review per completed stay with average ratings.
+Room schedule changes lock the room's availability record in a
+transaction, and Phase 8 bookings must lock it too. Tests found and fixed
+a bug where partial edits cleared unsent fields. The student reviewed the
+results and a browser Swagger check before merging.
+================================================
+
+================================================
+Date: 2026-11-19
+Student: MohamedShabrawy16003169
+Tool: Claude Code (Claude Opus 5.5)
+Related requirements: HTL-11, HTL-12, HTL-16, HTL-17, HTL-18, HTL-20,
+HTL-21, GEN-11, ACC-11
+Prompt summary:
+Finish Phase 8: hotel search and multi-room reservations, following the
+Phase 7 room-locking contract.
+How the output was used:
+Claude added hotel search with guest capacity, price and rating filters
+and sorting; multi-room reservations held together for 10 minutes inside
+a transaction that locks every room and re-checks it, so nothing is held
+if any room is taken; hold expiry; confirmation for the payment service
+to call; grouped reservation lists and details; and whole-reservation
+cancellation with the hotel's refund tiers. Tests include 8 simultaneous
+requests for one room (exactly one succeeds). The student reviewed the
+results and a browser Swagger check before merging.
+================================================
+
+================================================
+Date: 2026-11-19
+Student: MohamedShabrawy16003169
+Tool: Claude Code (Claude Opus 5.5)
+Related requirements: PAY-01, PAY-02, PAY-03, PAY-04, FLT-23, HTL-17
+Prompt summary:
+Finish Phase 9: Stripe test-mode payments and refunds for flight bookings
+and hotel reservations, following the Phase 6 and 8 confirmation
+contracts. The student created the Stripe sandbox and added the test key
+to backend/.env; the key was never shared with the AI tool.
+How the output was used:
+Claude added the policy view and acceptance, PaymentIntent creation with
+client secrets for Stripe Elements, a signature-checked webhook and direct
+Stripe checks that confirm bookings only after Stripe reports success,
+retry after declines, cancelling payments when holds end, automatic full
+refunds for late payments, and refund dispatch through the Stripe Refunds
+API with status tracking, notifications and status on booking details.
+Tests use a fake Stripe; one real sandbox payment, decline, retry and
+refund was checked through the app. A test exposed a bug where Stripe's
+decline test card name was rejected, which was fixed. The student reviewed
+the results before merging.
+================================================
+
+================================================
+Date: 2026-11-19
+Student: MohamedShabrawy16003169
+Tool: Claude Code (Claude Opus 5.5)
+Related requirements: ITN-01, ITN-03, ITN-05, ITN-07 to ITN-10, ITN-12,
+ITN-14, ITN-16, ITN-18, ITN-20, ITN-21, ITN-25, ITN-26, GEN-08, ACC-12
+Prompt summary:
+Finish Phase 10: itineraries and budgeting, including FXRatesAPI currency
+conversion through the backend.
+How the output was used:
+Claude added itinerary, day, activity, budget and transport endpoints with
+ownership checks and version-checked saves; automatic day numbering, dates
+and city groups; a shared JPG/PNG upload service (GEN-08) for activity
+photos; daily cached FXRatesAPI rates with fallback to the last cached
+rates and correct handling of currencies without minor units; budget
+totals by category, day and city group; public search, read-only view and
+independent clones crediting the original author; and hotel and flight
+search from an itinerary. Tests stub the exchange-rate API. A real
+FXRatesAPI check was done through Swagger. The student reviewed the
+results before merging.
+================================================
+
+================================================
+Date: 2026-11-19
+Student: Youssef Ashraf
+Tool: Codex
+Related requirements: PAY-01, PAY-03, FLT-06, ACC-12, GEN-11
+Prompt summary:
+Fix the three reproduced audit issues: Stripe cleanup after provider
+cancellation, extra successful payment refunds and hotel-timezone account
+deactivation checks.
+How the output was used:
+Codex added regression tests reproducing the failures, stable per-booking
+Stripe idempotency, reconciliation tracking for legacy cancelled payments,
+idempotent extra-charge refund recovery and a payment-specific refund response.
+The account guard now uses hotel-local checkout date/time and handles missing
+legacy metadata conservatively. Full local MongoDB tests and original audit
+probes verify the fixes with a fake Stripe gateway. Existing credentials and
+shared Atlas records were preserved.
+================================================
+
+================================================
+Date: 2026-11-20
+Requested commit identity: ahmedsalahh06
+Tool: Codex
+Related requirements: BLG-01 to BLG-04 (core posts), BLG-08, BLG-10,
+ACC-12, GEN-03, GEN-05, GEN-08, GEN-10, GEN-13
+Prompt summary:
+Start Phase 11 Group A. The user confirmed the scope as post creation,
+drafts/publishing, viewing, editing and deletion, leaving comments, likes,
+search and moderation for later groups. Use the repository-local commit
+identity configured at the user's request.
+How the output was used:
+Codex checked the current official workbook, connected the existing Blog
+schemas to guarded owner APIs and public published-post reads, added tags
+and image uploads required by the post contract, documented the endpoints,
+and added isolated database regression coverage for validation, ownership,
+visibility, pagination, publishing, deletion and concurrent uploads.
+The progress document distinguishes completed core post functionality from
+remaining comment/search/author-page/moderation integration. No frontend
+or real team database records are added by this implementation's tests.
+================================================
+
+================================================
+Date: 2026-11-20
+Requested commit identity: ahmedsalahh06
+Tool: Codex
+Related requirements: BLG-01 to BLG-10, BLG-12, ACC-12,
+GEN-03, GEN-05, GEN-07, GEN-09, GEN-10, GEN-13
+Prompt summary:
+Finalize Phase 11 after Group A, following the official workbook and the
+existing workflow of tested feature branches merged automatically to develop.
+How the output was used:
+Codex implemented chronological comments and owner edits/deletes, idempotent
+likes/unlikes, ranked literal keyword search, public author pages, one-report-
+per-user/item reporting for all four content types, administrator moderation
+and transactional audit records. Hidden/deactivated content rules and media
+cleanup integrate with the existing blog, hotel review and itinerary APIs.
+Transaction fences protect interactions from concurrent post deletion; schema
+character limits match request validation for Unicode text. Thirty-four new
+end-to-end cases cover permissions, visibility, pagination, concurrency,
+moderation rollback and cleanup. Full unit/e2e suites and Swagger checks passed.
+The optional BLG-13 attachment feature remains outside mandatory scope; no
+frontend pages or shared team database records were created by these tests.
+================================================
+
+================================================
+Date: 2026-11-20
+Requested commit identity: hamzamohamed-tech
+Tool: Codex
+Related requirements: ACC-15, ACC-17, GEN-01, GEN-05, GEN-07, GEN-13;
+existing account management ACC-13, ACC-14, ACC-16 and ACC-18 reviewed.
+Prompt summary:
+Implement Phase 12 Group A and credit future project commits to the requested
+repository-local identity. User confirmed provider activation, all-booking
+viewing and audit history, with notification reads and remaining uploads later.
+How the output was used:
+Codex added guarded provider controls, combined read-only booking summaries
+and audit history. Provider status, pending holds, audit and notifications are
+transactional; new holds serialize against deactivation and existing confirmed
+bookings remain valid. Late captured payments use the existing refund queue.
+Twenty new API regression cases cover permissions, filters, privacy, pagination,
+rollback, concurrency and payment lifecycle integration. Existing account tests
+are reused. Validation uses an isolated local database and fake payment state.
+No frontend or shared team database records were created by these tests.
+================================================
+
+================================================
+Date: 2026-11-20
+Requested commit identity: hamzamohamed-tech
+Tool: Codex
+Related requirements: GEN-01, GEN-03, GEN-05, GEN-08, GEN-13,
+FLT-01, HTL-01 and the remaining Phase 12 supporting-feature checklist.
+Prompt summary:
+Finalize Phase 12 after the approved Group A admin APIs, following the official
+workbook and existing tested feature-branch workflow into develop.
+How the output was used:
+Codex implemented recipient-only notification lists/unread counts and idempotent
+single/all mark-as-read operations. Assigned moderators can upload/replace/remove
+one airline logo and add/remove up to five hotel photos with JPG/PNG byte checks,
+5 MB limits, atomic hotel counts and file cleanup on rejected database writes.
+Profile inputs no longer accept arbitrary media URLs; hotel responses retain
+photoUrls and add photo ids for removal. Shared filesystem containment now checks
+the directory boundary. Existing admin, reporting, pagination, validation and
+confirmation behavior was reviewed against the Phase 12 checklist. New isolated
+API tests cover privacy, permissions, status, concurrent uploads, validation,
+failure cleanup and path containment; the full regression suites are run.
+No frontend or shared database records are created by this verification.
+================================================
+
+================================================
+Date: 2026-11-20
+Requested commit identity: youssefashraf-1
+Tool: Codex
+Related requirements: Phase 13 Task 1; GEN-03, GEN-05, GEN-07,
+GEN-13, ACC-07a, ACC-15, ACC-16, PAY-03 and existing backend API contracts.
+Prompt summary:
+Perform the first of two Phase 13 tasks: test APIs, permissions, bookings,
+payments and refunds, and fix discovered issues. Documentation/final milestone
+review is reserved for the next task.
+How the output was used:
+Codex ran the existing isolated unit/API suites and added a whole-API access
+matrix for 128 documented operations plus unsigned-webhook rejection. Regression
+tests reproduced lost refund notifications and refund queue starvation before
+fixing them. Refund status/notification and admin account changes/session/audit
+writes now use transactions. Eight older delete endpoints now enforce explicit
+confirmation, and shared pagination rejects unsafe offsets. Added API cases
+cover rollback/retry, the 101-refund queue, access boundaries, confirmations and
+pagination. Captured access results and a scoped Phase 13 test report are saved.
+Payment verification uses a fake gateway and real signature validation; no real
+Stripe transaction or shared Atlas data is used. Milestone 1 is not marked complete.
+================================================
+
+================================================
+Date: 2026-11-20
+Student: MohamedShabrawy16003169
+Tool: Claude Code (Claude Opus 5.5)
+Related requirements: GEN-03, GEN-05, GEN-12, GEN-13, ACC-18, BLG-08,
+GEN-10, PAY-01; Milestone 1 deliverables (README, Swagger, secrets review)
+Prompt summary:
+Audit the project against the workbook, the project description and the
+phase checklist, then finish the rest of Phase 13 and anything missing.
+How the output was used:
+Claude compared all 119 endpoints in the project description with the
+running API and all 104 mandatory workbook requirements with the code,
+scanned the Git history for secrets, and checked the reference data
+against the official datasets. It then aligned the blog, tag and report
+paths with the description (keeping the earlier paths working), documented
+the Stripe webhook, removed pre-filled Swagger search filters, added a
+demo data seed, rewrote the README with setup, environment, seeding,
+a demonstration walkthrough and API conventions, and updated the Phase 13
+notes and access matrix. Tests were added for the documented paths and
+Swagger completeness. The student reviewed the results before merging.
+================================================
