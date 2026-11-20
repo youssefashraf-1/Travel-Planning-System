@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { copyFile, mkdir, unlink, writeFile } from 'node:fs/promises';
-import { join, resolve } from 'node:path';
+import { join, resolve, sep } from 'node:path';
 import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 
 /** GEN-08: at most 5 MB per image. */
@@ -89,7 +89,7 @@ export class ImageUploadsService {
       uploadsDirectory(),
       url.slice(UPLOADS_URL_PREFIX.length + 1),
     );
-    return path.startsWith(uploadsDirectory()) ? path : null;
+    return path.startsWith(uploadsDirectory() + sep) ? path : null;
   }
 
   /** Deletes a file saved by save(); a missing file is not an error. */
@@ -100,7 +100,7 @@ export class ImageUploadsService {
       url.slice(UPLOADS_URL_PREFIX.length + 1),
     );
     // Never delete outside the uploads directory.
-    if (!path.startsWith(uploadsDirectory())) return;
+    if (!path.startsWith(uploadsDirectory() + sep)) return;
     try {
       await unlink(path);
     } catch {

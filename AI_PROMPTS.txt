@@ -488,3 +488,26 @@ rollback, concurrency and payment lifecycle integration. Existing account tests
 are reused. Validation uses an isolated local database and fake payment state.
 No frontend or shared team database records were created by these tests.
 ================================================
+
+================================================
+Date: 2026-11-20
+Requested commit identity: hamzamohamed-tech
+Tool: Codex
+Related requirements: GEN-01, GEN-03, GEN-05, GEN-08, GEN-13,
+FLT-01, HTL-01 and the remaining Phase 12 supporting-feature checklist.
+Prompt summary:
+Finalize Phase 12 after the approved Group A admin APIs, following the official
+workbook and existing tested feature-branch workflow into develop.
+How the output was used:
+Codex implemented recipient-only notification lists/unread counts and idempotent
+single/all mark-as-read operations. Assigned moderators can upload/replace/remove
+one airline logo and add/remove up to five hotel photos with JPG/PNG byte checks,
+5 MB limits, atomic hotel counts and file cleanup on rejected database writes.
+Profile inputs no longer accept arbitrary media URLs; hotel responses retain
+photoUrls and add photo ids for removal. Shared filesystem containment now checks
+the directory boundary. Existing admin, reporting, pagination, validation and
+confirmation behavior was reviewed against the Phase 12 checklist. New isolated
+API tests cover privacy, permissions, status, concurrent uploads, validation,
+failure cleanup and path containment; the full regression suites are run.
+No frontend or shared database records are created by this verification.
+================================================

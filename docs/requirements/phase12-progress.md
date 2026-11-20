@@ -1,10 +1,11 @@
 # Phase 12 — administration and support
 
-## Group A scope and status
+## Scope and status
 
-Group A is the user-approved grouping for provider activation, read-only
-administrator booking lists and audit history. The original plan has no named
-Group A. Notifications retrieval and remaining uploads are later work.
+Phase 12 is complete for the mandatory backend scope. The user-approved Group A
+covered provider activation, administrator bookings and audit history. The final
+support work adds notification retrieval/read state and provider image uploads.
+The original plan has no named Group A. Frontend screens follow in Milestone 2.
 
 ## Implemented
 
@@ -17,7 +18,7 @@ Group A. Notifications retrieval and remaining uploads are later work.
   end immediately; existing lifecycle jobs perform expiry and inventory release.
   Reactivation never restores an ended hold or changes moderator account status.
 - Affected booking owners and assigned moderators receive stored, deduplicated
-  notifications. The notification listing/read APIs are not part of this group.
+  notifications. The final support work now exposes notification listing/read APIs.
 - Stripe work stays in the existing payment lifecycle: ended holds cannot confirm;
   late captured payments enter its durable full-refund queue. The status-change
   request does not wait for Stripe cancellation/refund dispatch.
@@ -34,7 +35,7 @@ Group A. Notifications retrieval and remaining uploads are later work.
   inactivity remains separate from moderator account suspension. Phase 11 already
   supplies reporting/moderation and its audit writes.
 
-## New endpoints
+## Administrator endpoints
 
 All five require an active administrator session.
 
@@ -50,24 +51,79 @@ All five require an active administrator session.
 Booking date filters are `fromDate`/`toDate`; they refer to travel, not creation.
 Audit date filters refer to UTC creation dates. Swagger documents these contracts.
 
+## Notifications and media endpoints
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| GET | `/api/notifications` | Own inbox, newest first, ten/page; optional unread filter |
+| GET | `/api/notifications/unread-count` | Own unread count |
+| PATCH | `/api/notifications/:id/read` | Mark one own notification read, idempotently |
+| PATCH | `/api/notifications/read-all` | Mark own currently unread notifications read |
+| PUT | `/api/airlines/:id/logo` | Upload/replace the assigned airline's logo |
+| DELETE | `/api/airlines/:id/logo` | Remove the logo with confirm:true |
+| POST | `/api/hotels/:id/photos` | Upload one assigned hotel's photo |
+| DELETE | `/api/hotels/:id/photos/:photoId` | Remove a photo with confirm:true |
+
+- All notification endpoints require an active authenticated account, including
+  admins and moderators. Each recipient accesses only their own inbox. Another
+  recipient's notification id returns 404, even for administrators.
+- Notifications cover booking confirmation/cancellation, refund updates, flight
+  schedule changes and account/provider status changes using the existing event
+  writers. Viewing the inbox never marks items read. Repeated marking preserves
+  the original read timestamp. List totals and unread count use one aggregation.
+- Uploads require the assigned moderator; guest, wrong-role, other-provider and
+  suspended accounts are refused. Multipart field: `image`, one file/request,
+  JPG/PNG detected from bytes, maximum 5 MB. Unexpected fields/files are rejected.
+- Hotel additions enforce the five-photo cap atomically under concurrent uploads.
+  Airline replacement keeps one logo. Removed/replaced files and failed writes'
+  newly saved files are cleaned up. All uploaded images are served by URL.
+- Hotel details retain `photoUrls` and now also expose `photos: [{id,url}]` for
+  removal. Profile create/edit DTOs no longer accept `photoUrls` or `logoUrl`:
+  use the upload endpoints, preventing arbitrary URL/path and limit bypasses.
+  Existing stored URLs remain readable; no data migration is required.
+- Blog/activity uploads already use the shared service and retain their five-image
+  limits. Shared file copy/removal containment now requires a directory boundary,
+  preventing access to sibling paths that share the uploads directory prefix.
+- Files live under `UPLOADS_DIR` or `backend/uploads`; keep this directory when
+  restarting or deploying if uploaded media must persist. No new credential is needed.
+
+## Original Phase 12 checklist
+
+| Checklist area | Completion evidence |
+| --- | --- |
+| Moderator assignment; administrator account management | Existing admin moderator/create/list/reset APIs and account API tests |
+| Account suspension/reactivation | Existing guarded admin account APIs, session enforcement and notifications |
+| Airline/hotel activation/deactivation | Group A provider operations, transaction/concurrency/payment tests |
+| Administrator bookings | Combined read-only flight/hotel pagination and filters |
+| Content reports management | Phase 11 reports and direct moderation, ownership/audit/rollback tests |
+| Audit logs | Transactional admin action writers and read-only admin history |
+| In-app notifications | All six event types, private inbox, unread count, single/all read operations |
+| Image uploads and validation | Posts, activities, hotels and airline logo; byte type/size/count validation |
+| Consistent errors and server-side validation | Shared Nest exception responses, DTO whitelist and invalid-input tests |
+| Filtering, sorting and pagination | Validated list filters, stable documented ordering, ten items/page |
+| Destructive confirmations | Existing admin/report/account confirmations plus provider/media removal DTOs |
+| Permissions and errors | Full unit/API suites including role/ownership, suspended users and failure cleanup |
+
 ## Verification
 
 - Build, type-aware lint, formatting and Git whitespace checks passed.
 - **238 unit tests in 42 suites passed.**
-- **261 end-to-end tests in 19 suites passed**, including 20 new Group A cases.
-- Coverage includes all new endpoints' administrator-only access, independent
-  moderator/provider status, deactivation/reactivation, notification deduplication,
-  unchanged confirmed bookings, ended holds, audit/notification rollback,
-  concurrent status changes and hotel holds, late-payment full-refund queuing,
-  private-field exclusion, combined pagination and travel/UTC date boundaries.
-- Swagger UI returned HTTP 200. All five new operations expose documented
-  cookie security and response schemas; a guest booking-list request returned 401.
+- **287 end-to-end tests in 20 suites passed**, including 26 new notification/media
+  cases and the 20 Group A administrator cases.
+- New coverage includes all six event types, recipient isolation, read/unread
+  filters, chronological pagination, idempotent single/all reads, suspended users,
+  provider ownership, JPEG/PNG byte detection, missing/incorrect/oversized uploads,
+  five-photo concurrency, concurrent logo replacement, file serving/removal,
+  database-failure cleanup, raw URL rejection and sibling-path containment.
+- Swagger UI returned HTTP 200; all eight notification/media operations expose
+  cookie security, response schemas and multipart upload forms. Raw URL inputs
+  are absent from create/edit request schemas. The Group A checks remain passing.
 
-Tests used a disposable local replica-set database and no real Stripe account.
-Private environment files, shared Atlas records and frontend files were preserved.
+All tests used disposable local databases and fake payment state. Shared Atlas
+records, private environment credentials, frontend files and main were preserved.
 
-## Remaining
+## Next
 
-Finish the later Phase 12 support work: notification listing/unread/read APIs and
-remaining upload requirements, then Phase 13 final backend verification and
-submission documentation. Group A does not complete all of Phase 12.
+Phase 13: final backend demonstration, endpoint verification, documentation and
+submission checks. Optional workbook bonus features remain separate from the
+mandatory Phase 12 scope. Frontend pages remain Milestone 2 work.

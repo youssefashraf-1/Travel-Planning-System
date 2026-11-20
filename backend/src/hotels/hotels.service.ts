@@ -45,11 +45,7 @@ export class HotelsService {
   /** HTL-01: admins create hotel profiles in a seeded city. */
   async create(dto: CreateHotelDto): Promise<HotelDto> {
     await this.checkLocation(dto.cityId, dto.countryCode);
-    const { photoUrls, ...profile } = dto;
-    const hotel = await this.hotels.create({
-      ...profile,
-      photos: (photoUrls ?? []).map((url) => ({ url })),
-    });
+    const hotel = await this.hotels.create(dto);
     return this.present(hotel.toObject());
   }
 
@@ -63,13 +59,7 @@ export class HotelsService {
         dto.cityId ?? hotel.cityId,
         dto.countryCode ?? hotel.countryCode,
       );
-    const { photoUrls, ...profile } = dto;
-    hotel.set(definedFields(profile));
-    if (photoUrls !== undefined)
-      hotel.set(
-        'photos',
-        photoUrls.map((url) => ({ url })),
-      );
+    hotel.set(definedFields(dto));
     await hotel.save();
     return this.present(hotel.toObject());
   }
@@ -200,6 +190,10 @@ export class HotelsService {
       starClass: hotel.starClass,
       amenities: hotel.amenities,
       photoUrls: hotel.photos.map((photo) => photo.url),
+      photos: hotel.photos.map((photo) => ({
+        id: (photo as typeof photo & { _id: Types.ObjectId })._id.toString(),
+        url: photo.url,
+      })),
       policy: hotel.policy && {
         checkInTime: hotel.policy.checkInTime,
         checkOutTime: hotel.policy.checkOutTime,

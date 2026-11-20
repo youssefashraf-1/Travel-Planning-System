@@ -174,7 +174,8 @@ cancellation smoke response correctly reported one pending refund.
 All Phase 5 endpoint groups are implemented. Do not mark FLT-06/PAY-03's full
 refund outcome 100% verified until Phase 9 Stripe processing is implemented
 and tested. Booking hold creation/expiry remains Phase 6; image upload/storage
-is the separate Phase 12 GEN-08 feature (airline profiles currently accept URLs).
+was completed in Phase 12 under GEN-08. Airline create/edit requests now use
+the separate logo upload endpoint rather than accepting logo URLs.
 
 Next: Phase 6, flight booking and inventory holds, following the transaction
 contract above. Do not promote develop to main as a completed backend milestone

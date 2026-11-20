@@ -10,7 +10,6 @@ import {
   IsNotEmpty,
   IsOptional,
   IsString,
-  IsUrl,
   Matches,
   Max,
   MaxLength,
@@ -116,21 +115,6 @@ export class CreateHotelDto {
   @IsNotEmpty({ each: true })
   @MaxLength(60, { each: true })
   amenities?: string[];
-
-  @ApiPropertyOptional({
-    type: [String],
-    example: ['https://example.com/hotel-front.jpg'],
-    description: 'Up to five photo URLs (uploads arrive with GEN-08).',
-  })
-  @IsOptional()
-  @IsArray()
-  @ArrayMaxSize(5)
-  @IsUrl(
-    { protocols: ['http', 'https'], require_protocol: true },
-    { each: true },
-  )
-  @MaxLength(2048, { each: true })
-  photoUrls?: string[];
 }
 
 export class UpdateHotelDto extends PartialType(CreateHotelDto) {}

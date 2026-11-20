@@ -1,3 +1,5 @@
+import { ImageUploadsService } from '../common/uploads/image-uploads.service';
+import { ProviderMediaService } from '../common/uploads/provider-media.service';
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { AuthModule } from '../auth/auth.module';
@@ -48,6 +50,8 @@ import { Room, RoomSchema } from './schemas/room.schema';
   // Search first, so /hotels/search is not matched as /hotels/:id.
   controllers: [HotelSearchController, HotelsController],
   providers: [
+    ImageUploadsService,
+    ProviderMediaService,
     HotelsService,
     RoomsService,
     HotelStayStatusService,

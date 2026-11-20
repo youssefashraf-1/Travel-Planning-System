@@ -1,3 +1,5 @@
+import { ImageUploadsService } from '../common/uploads/image-uploads.service';
+import { ProviderMediaService } from '../common/uploads/provider-media.service';
 import { AuthModule } from '../auth/auth.module';
 import { AirlinesController } from './airlines.controller';
 import { AirlinesService } from './airlines.service';
@@ -11,7 +13,7 @@ import { Airline, AirlineSchema } from './schemas/airline.schema';
     MongooseModule.forFeature([{ name: Airline.name, schema: AirlineSchema }]),
   ],
   controllers: [AirlinesController],
-  providers: [AirlinesService],
+  providers: [AirlinesService, ImageUploadsService, ProviderMediaService],
   exports: [AirlinesService],
 })
 export class AirlinesModule {}

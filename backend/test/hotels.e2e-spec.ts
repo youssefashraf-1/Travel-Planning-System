@@ -81,7 +81,6 @@ describe('Hotel management and reviews (HTL-01 to HTL-10, HTL-15, HTL-22 to HTL-
     description: 'Riverside rooms.',
     starClass: 4,
     amenities: ['Wi-Fi', 'Pool'],
-    photoUrls: ['https://example.com/front.jpg'],
     ...overrides,
   });
 
@@ -251,7 +250,8 @@ describe('Hotel management and reviews (HTL-01 to HTL-10, HTL-15, HTL-22 to HTL-
       expect(response.body).toMatchObject({
         name: 'Nile View Hotel',
         cityName: 'Test Cairo',
-        photoUrls: ['https://example.com/front.jpg'],
+        photoUrls: [],
+        photos: [],
         canBook: false,
         ratingCount: 0,
         latestReviews: [],

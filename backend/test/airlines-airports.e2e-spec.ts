@@ -84,7 +84,7 @@ describe('Airlines and airports (FLT-01, FLT-02, FLT-08, FLT-09)', () => {
     const changed = await request(ctx.app.getHttpServer())
       .patch(path)
       .set('Cookie', ctx.cookies.moderator)
-      .send({ name: 'Changed', logoUrl: 'https://example.com/a.png' })
+      .send({ name: 'Changed' })
       .expect(200);
     expect(changed.body.name).toBe('Changed');
     for (const body of [
