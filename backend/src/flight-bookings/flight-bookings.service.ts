@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -29,6 +30,10 @@ import {
   NotificationType,
 } from '../notifications/schemas/notification.schema';
 import { Payment, PaymentStatus } from '../payments/schemas/payment.schema';
+import {
+  allocateFlightRefund,
+  recordRefunds,
+} from '../payments/refund-allocation';
 import { Refund, RefundStatus } from '../payments/schemas/refund.schema';
 import { UserDocument } from '../users/schemas/user.schema';
 import {
@@ -56,6 +61,7 @@ import {
   refundPercentage,
   takesSeat,
 } from './flight-booking-rules';
+import { FlightChange } from './schemas/flight-change.schema';
 import { FlightBooking } from './schemas/flight-booking.schema';
 import { PassengerType } from './schemas/passenger.schema';
 
@@ -121,6 +127,8 @@ export class FlightBookingsService {
     @InjectModel(Airport.name) private readonly airports: Model<Airport>,
     @InjectModel(Payment.name) private readonly payments: Model<Payment>,
     @InjectModel(Refund.name) private readonly refunds: Model<Refund>,
+    @InjectModel(FlightChange.name)
+    private readonly changes: Model<FlightChange>,
     @InjectModel(Notification.name)
     private readonly notifications: Model<Notification>,
     private readonly lifecycle: FlightBookingLifecycleService,
@@ -147,6 +155,12 @@ export class FlightBookingsService {
     dto: FlightBookingRequestDto,
     now = new Date(),
   ): Promise<FlightBookingDto> {
+    // ACC-02: travelers verify their email address before booking.
+    if (user.emailVerified === false)
+      throw new ForbiddenException(
+        'Verify your email address before booking. Use the link we emailed you, or request a new one with POST /api/auth/resend-verification.',
+      );
+
     await this.releaseStaleHolds(dto, now);
     const bookingId = await this.connection.transaction(async (session) => {
       const plan = await this.plan(dto, now, session);
@@ -372,6 +386,7 @@ export class FlightBookingsService {
           fareMinorUnits: selection.fareMinorUnits,
           extraBagWeightsKg: selection.extraBagWeightsKg,
           baggageFeeMinorUnits: selection.baggageFeeMinorUnits,
+          seat: selection.seat,
         })),
       })),
       faresMinorUnits: fares,
@@ -449,39 +464,21 @@ export class FlightBookingsService {
 
       const { refundPercentage: percentage, refundMinorUnits } =
         this.cancellationQuote(booking, outbound.departureAt, now);
-      if (refundMinorUnits > 0) {
-        const payment = await this.payments
-          .findOne({
-            bookingModel: 'FlightBooking' as const,
-            bookingId: booking._id,
-            status: PaymentStatus.SUCCEEDED,
-          })
-          .session(session)
-          .exec();
-        if (!payment)
-          throw new ConflictException(
-            'No successful payment was found for this booking, so the refund cannot be recorded.',
-          );
-        if (
-          await this.refunds.exists({ paymentId: payment._id }).session(session)
-        )
-          throw new ConflictException(
-            'A refund already exists for this payment.',
-          );
-        await this.refunds.create(
-          [
-            {
-              paymentId: payment._id,
-              amountMinorUnits: refundMinorUnits,
-              currency: payment.currency,
-              status: RefundStatus.PENDING,
-            },
-          ],
-          { session },
-        );
-        // TODO(PAY-03): the payment service sends pending refunds to Stripe
-        // and notifies the traveler when the refund status changes.
-      }
+      // After flight changes (FLT-27) a booking can have several payments.
+      await recordRefunds(
+        this.refunds,
+        await allocateFlightRefund(
+          {
+            payments: this.payments,
+            refunds: this.refunds,
+            changes: this.changes,
+          },
+          booking._id,
+          refundMinorUnits,
+          session,
+        ),
+        session,
+      );
 
       await this.notifications.create(
         [
@@ -940,27 +937,47 @@ export class FlightBookingsService {
     });
   }
 
-  /** PAY-03: the refund of this booking's successful payment, if any. */
+  /**
+   * PAY-03: the cancellation refund of this booking. After flight changes
+   * (FLT-27) it can be split over several payments; the parts are shown
+   * as one refund, pending until every part is done.
+   */
   private async refundFor(bookingId: Types.ObjectId) {
-    const payment = await this.payments
-      .findOne({
-        bookingModel: 'FlightBooking' as const,
-        bookingId,
-        status: PaymentStatus.SUCCEEDED,
-      })
-      .select('_id')
-      .lean()
+    const changeIds = await this.changes
+      .find({ bookingId, status: BookingStatus.CONFIRMED })
+      .distinct('_id')
       .exec();
-    const refund = payment
-      ? await this.refunds.findOne({ paymentId: payment._id }).lean().exec()
-      : null;
-    return refund
-      ? {
-          id: refund._id.toString(),
-          amountMinorUnits: refund.amountMinorUnits,
-          currency: refund.currency,
-          status: refund.status,
-        }
-      : undefined;
+    const payments = await this.payments
+      .find({
+        status: PaymentStatus.SUCCEEDED,
+        $or: [
+          { bookingModel: 'FlightBooking' as const, bookingId },
+          {
+            bookingModel: 'FlightChange' as const,
+            bookingId: { $in: changeIds },
+          },
+        ],
+      })
+      .distinct('_id')
+      .exec();
+    const refunds = payments.length
+      ? await this.refunds
+          .find({ paymentId: { $in: payments } })
+          .sort({ _id: 1 })
+          .lean()
+          .exec()
+      : [];
+    if (refunds.length === 0) return undefined;
+    const status = refunds.some((r) => r.status === RefundStatus.FAILED)
+      ? RefundStatus.FAILED
+      : refunds.some((r) => r.status === RefundStatus.PENDING)
+        ? RefundStatus.PENDING
+        : RefundStatus.REFUNDED;
+    return {
+      id: refunds[0]._id.toString(),
+      amountMinorUnits: refunds.reduce((sum, r) => sum + r.amountMinorUnits, 0),
+      currency: refunds[0].currency,
+      status,
+    };
   }
 }

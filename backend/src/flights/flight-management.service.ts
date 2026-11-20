@@ -16,7 +16,12 @@ import {
   NotificationType,
 } from '../notifications/schemas/notification.schema';
 import { Payment, PaymentStatus } from '../payments/schemas/payment.schema';
-import { Refund, RefundStatus } from '../payments/schemas/refund.schema';
+import {
+  allocateFlightRefund,
+  recordRefunds,
+} from '../payments/refund-allocation';
+import { Refund } from '../payments/schemas/refund.schema';
+import { FlightChange } from '../flight-bookings/schemas/flight-change.schema';
 import { UserDocument } from '../users/schemas/user.schema';
 import { CreateCabinDto } from './dto/create-cabin.dto';
 import { UpdateCabinDto, UpdateFlightDto } from './dto/manage-flight.dto';
@@ -38,6 +43,8 @@ export class FlightManagementService {
     private readonly notifications: Model<Notification>,
     @InjectModel(Payment.name) private readonly payments: Model<Payment>,
     @InjectModel(Refund.name) private readonly refunds: Model<Refund>,
+    @InjectModel(FlightChange.name)
+    private readonly changes: Model<FlightChange>,
   ) {}
 
   async update(user: UserDocument, id: string, dto: UpdateFlightDto) {
@@ -250,48 +257,22 @@ export class FlightManagementService {
             );
         }
         if (confirmed) {
-          const payment = await this.payments
-            .findOne({
-              bookingModel: 'FlightBooking',
-              bookingId: booking._id,
-              status: PaymentStatus.SUCCEEDED,
-            })
-            .session(session)
-            .exec();
-          if (
-            !payment ||
-            payment.amountMinorUnits !== booking.totalMinorUnits ||
-            payment.currency !== booking.currency
-          )
-            throw new ConflictException(
-              'A successful full booking payment is required to queue the refund.',
-            );
-          let refund = await this.refunds
-            .findOne({ paymentId: payment._id })
-            .session(session)
-            .exec();
-          if (
-            refund &&
-            (refund.amountMinorUnits !== payment.amountMinorUnits ||
-              refund.currency !== payment.currency)
-          )
-            throw new ConflictException(
-              'An existing refund needs reconciliation before cancellation.',
-            );
-          if (!refund)
-            refund = await new this.refunds({
-              paymentId: payment._id,
-              amountMinorUnits: payment.amountMinorUnits,
-              currency: payment.currency,
-              status: RefundStatus.PENDING,
-            }).save({ session });
-          if (refund.status === RefundStatus.FAILED) {
-            refund.status = RefundStatus.PENDING;
-            await refund.save({ session });
-          }
-          // TODO(PAY-03): Phase 9 dispatcher sends pending refunds to Stripe
-          // with idempotency, updates status and notifies. Never mark paid here.
-          if (refund.status === RefundStatus.PENDING) pendingRefunds++;
+          // 100% back, split over the original and any flight-change
+          // payments (FLT-27); the payment service sends them (PAY-03).
+          pendingRefunds += await recordRefunds(
+            this.refunds,
+            await allocateFlightRefund(
+              {
+                payments: this.payments,
+                refunds: this.refunds,
+                changes: this.changes,
+              },
+              booking._id,
+              booking.totalMinorUnits,
+              session,
+            ),
+            session,
+          );
           cancelledBookings++;
         } else {
           expiredHolds++;

@@ -6,7 +6,11 @@ import {
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
-import { assertOwnedBy } from '../auth/access';
+import {
+  assertManagesProvider,
+  assertOwnedBy,
+  ProviderType,
+} from '../auth/access';
 import { BookingStatus } from '../common/booking-status';
 import { PAGE_SIZE, pageInfo } from '../common/pagination';
 import { HotelBooking } from '../hotel-bookings/schemas/hotel-booking.schema';
@@ -17,6 +21,7 @@ import {
   CreateReviewDto,
   HotelReviewListDto,
   MyReviewDto,
+  ReplyToReviewDto,
   ReviewDto,
   UpdateReviewDto,
 } from './dto/review.dto';
@@ -126,6 +131,36 @@ export class ReviewsService {
     await review.deleteOne();
   }
 
+  /**
+   * HTL-26 (optional): the moderator of the review's hotel replies, or
+   * replaces the earlier reply. Hidden reviews cannot be answered.
+   */
+  async reply(
+    user: UserDocument,
+    id: string,
+    dto: ReplyToReviewDto,
+    now = new Date(),
+  ): Promise<ReviewDto> {
+    const review = Types.ObjectId.isValid(id)
+      ? await this.reviews.findOne({ _id: id, ...VISIBLE }).exec()
+      : null;
+    if (!review) throw new NotFoundException('Review not found.');
+    assertManagesProvider(user, ProviderType.HOTEL, review.hotelId);
+    review.reply = { body: dto.body, moderatorId: user._id, repliedAt: now };
+    await review.save();
+    const author = await this.users
+      .findById(review.authorId)
+      .select('name status')
+      .lean()
+      .exec();
+    return this.present(
+      review.toObject() as unknown as StoredReview,
+      !author || author.status === UserStatus.DEACTIVATED
+        ? DELETED_USER
+        : author.name,
+    );
+  }
+
   /** HTL-24: newest first, 10 per page, with the hotel's rating summary. */
   async listForHotel(hotelId: string, page = 1): Promise<HotelReviewListDto> {
     const hotel = Types.ObjectId.isValid(hotelId)
@@ -218,6 +253,9 @@ export class ReviewsService {
       authorName,
       createdAt: review.createdAt,
       updatedAt: review.updatedAt,
+      reply: review.reply
+        ? { body: review.reply.body, repliedAt: review.reply.repliedAt }
+        : undefined,
     };
   }
 

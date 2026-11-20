@@ -556,3 +556,46 @@ a demonstration walkthrough and API conventions, and updated the Phase 13
 notes and access matrix. Tests were added for the documented paths and
 Swagger completeness. The student reviewed the results before merging.
 ================================================
+
+================================================
+Date: 2026-11-20
+Student: MohamedShabrawy16003169
+Tool: Claude Code (Claude Opus 5.5)
+Related requirements: ACC-02, ACC-07, HTL-26, BLG-13, ITN-27, ITN-28,
+BON-01, BON-02 (bonus)
+Prompt summary:
+Implement the small and medium bonus features after all mandatory work
+was complete.
+How the output was used:
+Claude added email verification that blocks booking until verified, and
+password reset links that are single-use, expire after 30 minutes, are
+replaced by newer requests and never reveal whether an account exists.
+Emails go through SMTP (nodemailer) or are printed in the console when
+SMTP is not configured. It also added hotel replies to reviews,
+itineraries attached to blog posts, confirmed bookings linked to
+itinerary days and counted in budgets, itinerary PDF export, admin
+analytics per provider, and favourites. Tokens are stored only as
+digests. New end-to-end tests cover every feature. The student reviewed
+the results before merging.
+================================================
+
+================================================
+Date: 2026-11-20
+Student: MohamedShabrawy16003169
+Tool: Claude Code (Claude Opus 5.5)
+Related requirements: FLT-27, FLT-28 (bonus)
+Prompt summary:
+Finish the last two bonus features: changing a booked flight and seat
+selection.
+How the output was used:
+Claude added a flight change for confirmed bookings (same route and
+cabin, before departure) with a preview of the fare difference. A
+cheaper change applies at once and refunds the difference through
+Stripe; a more expensive one holds the new seats for 10 minutes until
+the difference is paid, then completes. Cancellation refunds are now
+split across all payments of a booking. It also added a public seat map
+and seat selection, where a unique index stops two travelers from
+getting the same seat, and seats on the e-ticket. New end-to-end tests
+cover fare increases and decreases, expiry, refund splitting and a
+simultaneous seat race. The student reviewed the results before merging.
+================================================

@@ -5,6 +5,7 @@ type UserRecord = Pick<
   User,
   'name' | 'email' | 'role' | 'status' | 'mustChangePassword'
 > & {
+  emailVerified?: boolean;
   assignedProviderId?: { toString(): string } | null;
   _id: { toString(): string };
   createdAt?: Date;
@@ -44,6 +45,13 @@ export class UserResponseDto {
   })
   assignedProviderId?: string;
 
+  @ApiProperty({
+    example: true,
+    description:
+      'ACC-02: false until a self-registered traveler follows the emailed link; booking needs true.',
+  })
+  emailVerified: boolean;
+
   @ApiProperty({ type: String, format: 'date-time' })
   createdAt?: Date;
 
@@ -55,6 +63,7 @@ export class UserResponseDto {
     response.role = user.role;
     response.status = user.status;
     response.mustChangePassword = user.mustChangePassword ?? false;
+    response.emailVerified = user.emailVerified ?? true;
     if (user.assignedProviderId) {
       response.assignedProviderId = user.assignedProviderId.toString();
     }

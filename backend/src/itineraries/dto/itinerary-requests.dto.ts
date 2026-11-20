@@ -338,3 +338,22 @@ export class ItineraryFlightsQueryDto {
   @Max(9)
   infants: number = 0;
 }
+
+/** ITN-27 (optional): link one of your confirmed bookings to a day. */
+export class LinkBookingDto {
+  @ApiProperty({ enum: ['flight', 'hotel'], example: 'flight' })
+  @IsEnum(['flight', 'hotel'])
+  bookingType: 'flight' | 'hotel';
+
+  @ApiProperty({ example: '6740f0c2a1b2c3d4e5f60718' })
+  @IsMongoId()
+  bookingId: string;
+
+  @ApiPropertyOptional({
+    description:
+      "The day to link it to. Defaults to the day on the flight's departure date or the hotel's check-in date.",
+  })
+  @IsOptional()
+  @IsMongoId()
+  dayId?: string;
+}

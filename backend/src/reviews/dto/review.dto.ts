@@ -2,6 +2,7 @@ import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 import {
   IsInt,
+  IsNotEmpty,
   IsOptional,
   IsString,
   Max,
@@ -34,6 +35,27 @@ export class CreateReviewDto {
 
 export class UpdateReviewDto extends PartialType(CreateReviewDto) {}
 
+/** HTL-26 (optional): a hotel's reply to a review. */
+export class ReplyToReviewDto {
+  @ApiProperty({
+    example: 'Thank you for staying with us!',
+    maxLength: 1000,
+    description: 'Replaces any earlier reply.',
+  })
+  @Transform(({ value }: { value: unknown }) =>
+    typeof value === 'string' ? value.trim() : value,
+  )
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(1000)
+  body: string;
+}
+
+export class ReviewReplyViewDto {
+  @ApiProperty({ example: 'Thank you for staying with us!' }) body: string;
+  @ApiProperty({ type: String, format: 'date-time' }) repliedAt: Date;
+}
+
 export class ReviewDto {
   @ApiProperty() id: string;
   @ApiProperty({ example: 5 }) rating: number;
@@ -46,6 +68,11 @@ export class ReviewDto {
   authorName: string;
   @ApiProperty({ type: String, format: 'date-time' }) createdAt: Date;
   @ApiProperty({ type: String, format: 'date-time' }) updatedAt: Date;
+  @ApiPropertyOptional({
+    type: ReviewReplyViewDto,
+    description: 'HTL-26: the hotel’s reply, if any.',
+  })
+  reply?: ReviewReplyViewDto;
 }
 
 export class MyReviewDto extends ReviewDto {

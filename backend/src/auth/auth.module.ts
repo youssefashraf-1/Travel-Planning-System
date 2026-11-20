@@ -8,6 +8,12 @@ import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { ProviderOwnerGuard } from './guards/provider-owner.guard';
 import { RolesGuard } from './guards/roles.guard';
 import { PasswordHasherService } from './password-hasher.service';
+import { MailService } from '../common/mail/mail.service';
+import { AccountTokensService } from './account-tokens.service';
+import {
+  AccountToken,
+  AccountTokenSchema,
+} from './schemas/account-token.schema';
 import { Session, SessionSchema } from './schemas/session.schema';
 import { SessionsService } from './sessions.service';
 import { TokenService } from './token.service';
@@ -17,10 +23,15 @@ import { TokenService } from './token.service';
   imports: [
     forwardRef(() => UsersModule),
     JwtModule.register({}),
-    MongooseModule.forFeature([{ name: Session.name, schema: SessionSchema }]),
+    MongooseModule.forFeature([
+      { name: Session.name, schema: SessionSchema },
+      { name: AccountToken.name, schema: AccountTokenSchema },
+    ]),
   ],
   controllers: [AuthController],
   providers: [
+    AccountTokensService,
+    MailService,
     AuthService,
     PasswordHasherService,
     TokenService,

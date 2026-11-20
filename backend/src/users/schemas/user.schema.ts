@@ -89,6 +89,14 @@ export class User {
 
   @Prop({ type: Date })
   termsAndPrivacyAcceptedAt?: Date;
+
+  /**
+   * ACC-02: self-registered travelers start unverified and cannot book
+   * until they follow the emailed link. Seeded admins and moderators made
+   * by an admin count as verified.
+   */
+  @Prop({ type: Boolean, required: true, default: true })
+  emailVerified: boolean;
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);

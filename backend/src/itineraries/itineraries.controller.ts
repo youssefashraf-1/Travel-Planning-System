@@ -11,6 +11,8 @@ import {
   Patch,
   Post,
   Query,
+  ServiceUnavailableException,
+  StreamableFile,
   UploadedFile,
   UseGuards,
   UseInterceptors,
@@ -30,6 +32,7 @@ import {
   ApiOperation,
   ApiParam,
   ApiPayloadTooLargeResponse,
+  ApiProduces,
   ApiServiceUnavailableResponse,
   ApiTags,
   ApiUnauthorizedResponse,
@@ -50,6 +53,7 @@ import {
   CreateDayDto,
   CreateItineraryDto,
   CreateTransportCostDto,
+  LinkBookingDto,
   CurrencyQueryDto,
   ItineraryFlightsQueryDto,
   ItineraryHotelsQueryDto,
@@ -71,6 +75,7 @@ import {
 import { ItinerariesService } from './itineraries.service';
 import { ItineraryBudgetService } from './itinerary-budget.service';
 import { StoredItinerary } from './itinerary-presenter';
+import { buildItineraryPdf } from './itinerary-pdf';
 import { ItineraryPublicService } from './itinerary-public.service';
 
 /** Signed-in travelers only; others' itineraries answer 404 (ACC-11). */
@@ -386,6 +391,88 @@ export class ItinerariesController {
       itinerary.toObject() as unknown as StoredItinerary,
       query.currency ?? user.preferredCurrency ?? undefined,
     );
+  }
+
+  @Post(':id/bookings')
+  @Owner()
+  @ItineraryParam()
+  @ApiOperation({
+    summary: 'Link a booking to a day (ITN-27, optional)',
+    description:
+      'One of your confirmed or completed flight or hotel bookings. ' +
+      "Without dayId it goes to the day of the flight's departure or the " +
+      "hotel's check-in. Flights count as intercity transport and hotels " +
+      'as accommodation in the budget, while they stay confirmed.',
+  })
+  @ApiCreatedResponse({ type: ItineraryDetailsDto })
+  @ApiBadRequestResponse({
+    description: 'No day on the booking date; send dayId.',
+  })
+  @ApiConflictResponse({ description: 'Not confirmed, or already linked.' })
+  linkBooking(
+    @CurrentUser() user: UserDocument,
+    @Param('id') id: string,
+    @Body() dto: LinkBookingDto,
+  ): Promise<ItineraryDetailsDto> {
+    return this.itineraries.linkBooking(user, id, dto);
+  }
+
+  @Delete(':id/bookings/:linkId')
+  @Owner()
+  @ItineraryParam()
+  @ApiParam({ name: 'linkId', description: 'The link id from the day.' })
+  @ApiOperation({ summary: 'Unlink a booking (ITN-27, optional)' })
+  @ApiOkResponse({ type: ItineraryDetailsDto })
+  unlinkBooking(
+    @CurrentUser() user: UserDocument,
+    @Param('id') id: string,
+    @Param('linkId') linkId: string,
+  ): Promise<ItineraryDetailsDto> {
+    return this.itineraries.unlinkBooking(user, id, linkId);
+  }
+
+  @Get(':id/pdf')
+  @Owner()
+  @ItineraryParam()
+  @ApiProduces('application/pdf')
+  @ApiOperation({
+    summary: 'Download my itinerary as a PDF (ITN-28, optional)',
+    description:
+      'Days, cities, activities, budget entries, transport and the budget ' +
+      'totals in `currency` or your preferred currency (totals are left ' +
+      'out if no exchange rates are available).',
+  })
+  @ApiOkResponse({
+    description: 'The itinerary PDF.',
+    content: {
+      'application/pdf': { schema: { type: 'string', format: 'binary' } },
+    },
+  })
+  @ApiBadRequestResponse({ description: 'Unsupported currency.' })
+  async pdf(
+    @CurrentUser() user: UserDocument,
+    @Param('id') id: string,
+    @Query() query: CurrencyQueryDto,
+  ): Promise<StreamableFile> {
+    const stored = (
+      await this.itineraries.own(user, id)
+    ).toObject() as unknown as StoredItinerary;
+    const details = await this.itineraries.details(user, id);
+    let budget: BudgetSummaryDto | undefined;
+    try {
+      budget = await this.budget.summary(
+        stored,
+        query.currency ?? user.preferredCurrency ?? undefined,
+      );
+    } catch (error) {
+      if (!(error instanceof ServiceUnavailableException)) throw error;
+    }
+    const safeName =
+      details.title.replace(/[^A-Za-z0-9-]+/g, '-').slice(0, 60) || 'itinerary';
+    return new StreamableFile(buildItineraryPdf(details, budget), {
+      type: 'application/pdf',
+      disposition: `attachment; filename="${safeName}.pdf"`,
+    });
   }
 
   @Post(':id/clone')

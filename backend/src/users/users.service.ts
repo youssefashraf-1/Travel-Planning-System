@@ -53,6 +53,7 @@ export class UsersService {
         passwordHash: input.passwordHash,
         role: UserRole.TRAVELER,
         termsAndPrivacyAcceptedAt: input.termsAndPrivacyAcceptedAt,
+        emailVerified: false,
       });
     } catch (error) {
       if (isDuplicateEmailError(error)) {
@@ -86,6 +87,13 @@ export class UsersService {
       }
       throw error;
     }
+  }
+
+  /** ACC-02: marks the email address as verified. */
+  async markEmailVerified(userId: Types.ObjectId): Promise<void> {
+    await this.userModel
+      .updateOne({ _id: userId }, { $set: { emailVerified: true } })
+      .exec();
   }
 
   /**

@@ -186,6 +186,8 @@ export class ItineraryPublicService {
           amountMinorUnits: entry.amountMinorUnits,
           currency: entry.currency,
         })),
+        // Bookings belong to the original author, so a clone starts without them.
+        linkedBookings: [],
         transportCosts: day.transportCosts.map((transport) => ({
           mode: transport.mode,
           fromCityId: transport.fromCityId,

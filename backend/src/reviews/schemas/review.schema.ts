@@ -4,6 +4,20 @@ import { HotelBooking } from '../../hotel-bookings/schemas/hotel-booking.schema'
 import { Hotel } from '../../hotels/schemas/hotel.schema';
 import { User } from '../../users/schemas/user.schema';
 
+@Schema({ _id: false })
+export class ReviewReply {
+  @Prop({ required: true, trim: true, maxlength: 1000 })
+  body: string;
+
+  @Prop({ type: MongooseSchema.Types.ObjectId, ref: User.name, required: true })
+  moderatorId: Types.ObjectId;
+
+  @Prop({ type: Date, required: true })
+  repliedAt: Date;
+}
+
+const ReviewReplySchema = SchemaFactory.createForClass(ReviewReply);
+
 @Schema({ timestamps: true })
 export class Review {
   @Prop({
@@ -32,6 +46,10 @@ export class Review {
 
   @Prop({ type: Date })
   hiddenAt?: Date;
+
+  /** HTL-26 (optional): the hotel moderator's public reply. */
+  @Prop({ type: ReviewReplySchema })
+  reply?: ReviewReply;
 }
 
 export const ReviewSchema = SchemaFactory.createForClass(Review);

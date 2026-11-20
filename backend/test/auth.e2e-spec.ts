@@ -61,6 +61,7 @@ describe('POST /api/auth/register (ACC-01, e2e)', () => {
       [
         'createdAt',
         'email',
+        'emailVerified',
         'id',
         'mustChangePassword',
         'name',
@@ -69,6 +70,7 @@ describe('POST /api/auth/register (ACC-01, e2e)', () => {
       ].sort(),
     );
     expect(response.body).toMatchObject({
+      emailVerified: false,
       name: 'Mona Hassan',
       email: emailFor('mona'),
       role: UserRole.TRAVELER,

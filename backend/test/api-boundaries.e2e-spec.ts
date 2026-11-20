@@ -23,6 +23,8 @@ const PUBLIC = new Set([
   'get /api/airlines/{id}',
   'get /api/flights/search',
   'get /api/flights/{id}',
+  // Optional seat map (FLT-28), public like the flight details.
+  'get /api/flights/{id}/seats',
   'get /api/hotels/search',
   'get /api/hotels/{id}',
   'get /api/hotels/{id}/rooms/available',
@@ -38,6 +40,10 @@ const PUBLIC = new Set([
   'post /api/auth/register',
   'post /api/auth/login',
   'post /api/auth/logout',
+  // Optional account recovery (ACC-02, ACC-07): links arrive by email.
+  'get /api/auth/verify-email',
+  'post /api/auth/forgot-password',
+  'post /api/auth/reset-password',
   // Called by Stripe; protected by its signature instead of a login.
   'post /api/payments/webhook',
 ]);

@@ -33,8 +33,27 @@ export class BlogPostSummaryDto {
   hidden: boolean;
 }
 
+/** BLG-13 (optional): the itinerary attached to a post. */
+export class AttachedItineraryDto {
+  @ApiProperty() id: string;
+  @ApiProperty({ example: 'Ten days in Egypt' }) title: string;
+  @ApiProperty({ example: '2027-03-01' }) startDate: string;
+  @ApiProperty({ example: 10 }) dayCount: number;
+  @ApiProperty({
+    example: 'public',
+    description: 'Readers see it only while it stays public.',
+  })
+  visibility: string;
+}
+
 export class BlogPostDetailsDto extends BlogPostSummaryDto {
   @ApiProperty({ description: 'Text content, not trusted HTML.' }) body: string;
+  @ApiPropertyOptional({
+    type: AttachedItineraryDto,
+    description:
+      'BLG-13: open it with GET /api/itineraries/public/:id. Missing when none is attached or it is no longer public.',
+  })
+  itinerary?: AttachedItineraryDto;
   @ApiProperty({ type: BlogCommentListDto }) comments: BlogCommentListDto;
 }
 
