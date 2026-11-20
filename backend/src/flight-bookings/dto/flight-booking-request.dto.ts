@@ -6,6 +6,8 @@ import {
   Equals,
   IsArray,
   IsBoolean,
+  IsIn,
+  IsInt,
   IsEnum,
   IsMongoId,
   IsNotEmpty,
@@ -13,7 +15,9 @@ import {
   IsOptional,
   IsString,
   Matches,
+  Max,
   MaxLength,
+  Min,
   Validate,
   ValidateNested,
   ValidatorConstraint,
@@ -147,4 +151,60 @@ export class CancelFlightBookingDto {
   @IsBoolean()
   @Equals(true, { message: 'confirm must be true to cancel the booking' })
   confirm: boolean;
+}
+
+/** FLT-27 (optional): move one flight of a confirmed booking. */
+export class ChangeFlightDto {
+  @ApiProperty({ enum: ['outbound', 'return'], example: 'outbound' })
+  @IsIn(['outbound', 'return'])
+  leg: 'outbound' | 'return';
+
+  @ApiProperty({
+    example: '665f1c2e8b3a4d0012345678',
+    description:
+      'A scheduled flight on the same route, with the same cabin class.',
+  })
+  @IsMongoId()
+  newFlightId: string;
+
+  @ApiPropertyOptional({
+    description:
+      'true only shows the fare difference; nothing is changed or reserved.',
+  })
+  @IsOptional()
+  @IsBoolean()
+  previewOnly?: boolean;
+}
+
+/** FLT-28 (optional): pick a seat for one passenger on one flight. */
+export class ChooseSeatDto {
+  @ApiProperty({ enum: ['outbound', 'return'], example: 'outbound' })
+  @IsIn(['outbound', 'return'])
+  leg: 'outbound' | 'return';
+
+  @ApiProperty({
+    example: 1,
+    description: 'Passenger number, in booking order, starting at 1.',
+  })
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(MAX_PASSENGERS)
+  passenger: number;
+
+  @ApiProperty({
+    example: '21C',
+    description: 'A seat from GET /api/flights/{id}/seats.',
+  })
+  @Transform(trim)
+  @IsString()
+  @Matches(/^\d{1,3}[A-Ka-k]$/, { message: 'seat must look like 21C' })
+  seat: string;
+}
+
+/** FLT-28: which cabin's seat map to show. */
+export class SeatMapQueryDto {
+  @ApiProperty({ enum: CabinClass, example: CabinClass.ECONOMY })
+  @IsEnum(CabinClass)
+  cabinClass: CabinClass;
 }

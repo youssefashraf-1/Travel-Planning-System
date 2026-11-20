@@ -578,3 +578,24 @@ analytics per provider, and favourites. Tokens are stored only as
 digests. New end-to-end tests cover every feature. The student reviewed
 the results before merging.
 ================================================
+
+================================================
+Date: 2026-11-20
+Student: MohamedShabrawy16003169
+Tool: Claude Code (Claude Opus 5.5)
+Related requirements: FLT-27, FLT-28 (bonus)
+Prompt summary:
+Finish the last two bonus features: changing a booked flight and seat
+selection.
+How the output was used:
+Claude added a flight change for confirmed bookings (same route and
+cabin, before departure) with a preview of the fare difference. A
+cheaper change applies at once and refunds the difference through
+Stripe; a more expensive one holds the new seats for 10 minutes until
+the difference is paid, then completes. Cancellation refunds are now
+split across all payments of a booking. It also added a public seat map
+and seat selection, where a unique index stops two travelers from
+getting the same seat, and seats on the e-ticket. New end-to-end tests
+cover fare increases and decreases, expiry, refund splitting and a
+simultaneous seat race. The student reviewed the results before merging.
+================================================

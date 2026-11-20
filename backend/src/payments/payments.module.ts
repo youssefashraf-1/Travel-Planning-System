@@ -6,6 +6,10 @@ import {
   FlightBooking,
   FlightBookingSchema,
 } from '../flight-bookings/schemas/flight-booking.schema';
+import {
+  FlightChange,
+  FlightChangeSchema,
+} from '../flight-bookings/schemas/flight-change.schema';
 import { HotelBookingsModule } from '../hotel-bookings/hotel-bookings.module';
 import {
   HotelBooking,
@@ -34,6 +38,7 @@ import { StripeGateway } from './stripe-gateway';
       { name: Refund.name, schema: RefundSchema },
       { name: FlightBooking.name, schema: FlightBookingSchema },
       { name: HotelBooking.name, schema: HotelBookingSchema },
+      { name: FlightChange.name, schema: FlightChangeSchema },
       { name: Notification.name, schema: NotificationSchema },
     ]),
   ],

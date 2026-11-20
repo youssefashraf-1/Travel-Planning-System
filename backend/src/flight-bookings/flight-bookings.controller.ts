@@ -5,6 +5,7 @@ import {
   HttpCode,
   HttpStatus,
   Param,
+  Patch,
   Post,
   Query,
   StreamableFile,
@@ -31,10 +32,13 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import { UserRole, type UserDocument } from '../users/schemas/user.schema';
 import {
   CancelFlightBookingDto,
+  ChangeFlightDto,
+  ChooseSeatDto,
   FlightBookingRequestDto,
 } from './dto/flight-booking-request.dto';
 import {
   CancelledFlightBookingDto,
+  ChangeFlightResultDto,
   FlightBookingDto,
   FlightBookingListDto,
   FlightBookingSummaryDto,
@@ -42,6 +46,8 @@ import {
 } from './dto/flight-booking-response.dto';
 import { buildETicketPdf } from './e-ticket-pdf';
 import { FlightBookingsService } from './flight-bookings.service';
+import { FlightChangesService } from './flight-changes.service';
+import { FlightSeatsService } from './flight-seats.service';
 
 @ApiTags('Flight bookings')
 @ApiCookieAuth()
@@ -51,7 +57,11 @@ import { FlightBookingsService } from './flight-bookings.service';
 @Roles(UserRole.TRAVELER)
 @Controller('flight-bookings')
 export class FlightBookingsController {
-  constructor(private readonly flightBookings: FlightBookingsService) {}
+  constructor(
+    private readonly flightBookings: FlightBookingsService,
+    private readonly changes: FlightChangesService,
+    private readonly seats: FlightSeatsService,
+  ) {}
 
   @Post()
   @HttpCode(HttpStatus.OK)
@@ -160,6 +170,69 @@ export class FlightBookingsController {
     @Body() _dto: CancelFlightBookingDto,
   ): Promise<CancelledFlightBookingDto> {
     return this.flightBookings.cancel(user, id);
+  }
+
+  @Patch(':id/change-flight')
+  @ApiParam({ name: 'id', description: 'The booking id.' })
+  @ApiOperation({
+    summary: 'Change one flight to another date or flight (FLT-27, optional)',
+    description:
+      'For a confirmed booking, before that flight departs. The new flight ' +
+      'must fly the same route with the same cabin class, keep a round ' +
+      'trip in order and have enough seats. Extra bags are kept and priced ' +
+      "with the new airline's policy; chosen seats on that flight are " +
+      'cleared. Send previewOnly=true to see the fare difference first. ' +
+      'Same or lower total: changed at once and any difference is refunded ' +
+      'to the card. Higher total: the new seats are held for 10 minutes; ' +
+      'pay the difference with POST /api/payments { bookingType: ' +
+      '"flight_change", bookingId: changeId } and the change completes ' +
+      'when the payment succeeds.',
+  })
+  @ApiOkResponse({ type: ChangeFlightResultDto })
+  @ApiBadRequestResponse({
+    description:
+      'Different route, same flight, wrong round-trip order, or passengers or bags not allowed on the new flight.',
+  })
+  @ApiNotFoundResponse({
+    description: 'Not found, not your booking, or no such flight or cabin.',
+  })
+  @ApiConflictResponse({
+    description:
+      'Not confirmed, already departed, a change already waiting for payment, or not enough seats.',
+  })
+  changeFlight(
+    @CurrentUser() user: UserDocument,
+    @Param('id') id: string,
+    @Body() dto: ChangeFlightDto,
+  ): Promise<ChangeFlightResultDto> {
+    return this.changes.change(user, id, dto);
+  }
+
+  @Patch(':id/seat')
+  @ApiParam({ name: 'id', description: 'The booking id.' })
+  @ApiOperation({
+    summary: 'Choose a seat for one passenger (FLT-28, optional)',
+    description:
+      'For a held or confirmed booking, before that flight departs. See ' +
+      'free seats with GET /api/flights/{id}/seats. Infants have no seat. ' +
+      'Choosing again moves the passenger; two travelers can never get the ' +
+      'same seat.',
+  })
+  @ApiOkResponse({ type: FlightBookingDto })
+  @ApiBadRequestResponse({
+    description:
+      'No such leg, passenger or seat, or the passenger is an infant.',
+  })
+  @ApiNotFoundResponse({ description: 'Not found, or not your booking.' })
+  @ApiConflictResponse({
+    description: 'Booking not active, flight departed, or seat taken.',
+  })
+  chooseSeat(
+    @CurrentUser() user: UserDocument,
+    @Param('id') id: string,
+    @Body() dto: ChooseSeatDto,
+  ): Promise<FlightBookingDto> {
+    return this.seats.chooseSeat(user, id, dto);
   }
 
   @Get(':id/e-ticket')

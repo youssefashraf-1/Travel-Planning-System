@@ -11,15 +11,10 @@ import { BookingTargets, TYPE_FOR } from './booking-targets';
 import { RefundDto } from './dto/payment.dto';
 import { Payment, PaymentStatus } from './schemas/payment.schema';
 import { Refund, RefundStatus } from './schemas/refund.schema';
+import { refundStatusOf } from './refund-status';
 import { RefundState, StripeGateway } from './stripe-gateway';
 
-/** Stripe refund states → ours: succeeded is refunded; failed or canceled is failed. */
-export function refundStatusOf(state: RefundState): RefundStatus {
-  if (state.status === 'succeeded') return RefundStatus.REFUNDED;
-  if (state.status === 'failed' || state.status === 'canceled')
-    return RefundStatus.FAILED;
-  return RefundStatus.PENDING;
-}
+export { refundStatusOf } from './refund-status';
 
 type StoredRefund = Refund & {
   _id: Types.ObjectId;

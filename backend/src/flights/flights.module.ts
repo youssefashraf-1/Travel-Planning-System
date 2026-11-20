@@ -1,3 +1,7 @@
+import {
+  FlightChange,
+  FlightChangeSchema,
+} from '../flight-bookings/schemas/flight-change.schema';
 import { FlightBookingViewsService } from './flight-booking-views.service';
 import {
   FlightBooking,
@@ -38,6 +42,7 @@ import {
       { name: Airport.name, schema: AirportSchema },
       { name: Flight.name, schema: FlightSchema },
       { name: CabinInventory.name, schema: CabinInventorySchema },
+      { name: FlightChange.name, schema: FlightChangeSchema },
     ]),
   ],
   controllers: [FlightsReadController, FlightsController],

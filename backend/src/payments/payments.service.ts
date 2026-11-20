@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   HttpException,
   HttpStatus,
@@ -16,7 +17,6 @@ import { FlightBooking } from '../flight-bookings/schemas/flight-booking.schema'
 import { HotelBooking } from '../hotel-bookings/schemas/hotel-booking.schema';
 import { UserDocument } from '../users/schemas/user.schema';
 import {
-  BookingModelName,
   BookingTargets,
   MODEL_FOR,
   PayableBooking,
@@ -82,6 +82,7 @@ export class PaymentsService
     id: string,
   ): Promise<BookingPoliciesDto> {
     const name = MODEL_FOR[type];
+    if (name === 'FlightChange') throw noChangePolicies();
     await this.targets.findOwn(user, name, id);
     const booking =
       name === 'FlightBooking'
@@ -153,6 +154,7 @@ export class PaymentsService
     now = new Date(),
   ): Promise<BookingPoliciesDto> {
     const name = MODEL_FOR[type];
+    if (name === 'FlightChange') throw noChangePolicies();
     const booking = await this.targets.findOwn(user, name, id);
     this.assertPayable(booking, now);
     if (!booking.policyAcceptedAt)
@@ -568,7 +570,7 @@ export class PaymentsService
     try {
       const booking = await this.targets.findOwn(
         user,
-        payment.bookingModel as BookingModelName,
+        payment.bookingModel,
         payment.bookingId.toString(),
       );
       return { payment, booking };
@@ -594,6 +596,13 @@ export class PaymentsService
         'The hold has expired. Make a new booking to pay.',
       );
   }
+}
+
+/** FLT-27: a change accepts the booking's policies when it is requested. */
+function noChangePolicies() {
+  return new BadRequestException(
+    'A flight change has no separate policies: they were accepted when the change was requested. Pay it with POST /api/payments.',
+  );
 }
 
 /** Only the succeeded-per-booking index, not unrelated duplicate keys. */

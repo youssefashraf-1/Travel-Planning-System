@@ -123,6 +123,8 @@ export function buildETicketPdf(booking: FlightBookingDto): Buffer {
       gapBefore: 2,
     });
     for (const selection of passenger.segments) {
+      if (selection.seat)
+        lines.push({ text: `   Seat (${selection.leg}): ${selection.seat}` });
       if (selection.extraBagWeightsKg.length > 0)
         lines.push({
           text: `   Extra bags (${selection.leg}): ${selection.extraBagWeightsKg.map((kg) => `${kg} kg`).join(', ')}`,

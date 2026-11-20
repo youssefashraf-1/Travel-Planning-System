@@ -15,10 +15,11 @@ export enum PaymentStatus {
 export class Payment {
   @Prop({
     type: String,
-    enum: [FlightBooking.name, HotelBooking.name],
+    // FlightChange (FLT-27, optional): the fare difference of a flight change.
+    enum: [FlightBooking.name, HotelBooking.name, 'FlightChange'],
     required: true,
   })
-  bookingModel: 'FlightBooking' | 'HotelBooking';
+  bookingModel: 'FlightBooking' | 'HotelBooking' | 'FlightChange';
 
   @Prop({
     type: MongooseSchema.Types.ObjectId,
